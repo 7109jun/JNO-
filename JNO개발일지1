@@ -1,0 +1,3341 @@
+#JNO 개발하기
+여러1분 제가 ZIP을 써보면서 느낀것이 있스빈다!
+###바로바로 내 압축 프로그램을 만들고 싶다고 말이죠!!!!!!!!!!!!
+그래서 바로 개발함요 아직 프로토타입이빈다
+```<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JNO Studio</title>
+<style>
+/* ======================================================================
+   JNO STUDIO — DESIGN TOKENS
+   Identity: a "sealed container" — deep charcoal body, brass wax-seal
+   accent for actions/security, cool cyan for raw binary/data elements.
+   ====================================================================== */
+:root{
+  --bg-app:#14161c;
+  --bg-panel:#1a1d25;
+  --bg-elevated:#20232d;
+  --bg-hover:#282c38;
+  --bg-input:#171a22;
+  --border:#2c303c;
+  --border-soft:#23262f;
+  --text-primary:#e6e8ee;
+  --text-secondary:#9aa1b4;
+  --text-dim:#5c6274;
+  --accent:#d9a441;
+  --accent-strong:#f0c169;
+  --accent-soft:rgba(217,164,65,.14);
+  --data:#5fd0d6;
+  --data-soft:rgba(95,208,214,.14);
+  --danger:#e5534b;
+  --danger-soft:rgba(229,83,75,.14);
+  --success:#4caf7d;
+  --success-soft:rgba(76,175,125,.14);
+  --mono:ui-monospace,"SF Mono","Cascadia Code","Consolas","Roboto Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --radius:6px;
+  --topbar-h:44px;
+  --statusbar-h:26px;
+  --activitybar-w:48px;
+  --sidebar-w:270px;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;background:var(--bg-app);color:var(--text-primary);
+  font-family:var(--sans);font-size:13px;overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent-soft);color:var(--accent-strong);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#33384500;border-radius:5px;background:#383d4a;}
+::-webkit-scrollbar-thumb:hover{background:#454b5c;}
+button{font-family:inherit;}
+
+/* ---------- App shell ---------- */
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* ---------- Top bar ---------- */
+#topbar{
+  height:var(--topbar-h);flex:0 0 auto;display:flex;align-items:center;
+  gap:10px;padding:0 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);
+}
+#topbar .brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:.2px;color:var(--text-primary);padding-right:10px;border-right:1px solid var(--border);}
+#topbar .brand .seal{
+  width:20px;height:20px;border-radius:50%;
+  background:conic-gradient(from 220deg, var(--accent), var(--accent-strong), var(--accent));
+  box-shadow:0 0 0 2px #0000, 0 0 8px var(--accent-soft);
+  display:flex;align-items:center;justify-content:center;font-size:10px;color:#241a05;font-weight:800;
+}
+#topbar .filename{color:var(--text-secondary);font-family:var(--mono);font-size:12px;}
+#topbar .filename b{color:var(--text-primary);font-weight:600;}
+#topbar .dirty-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:none;margin-left:4px;}
+.status-badge{display:none;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border-radius:20px;font-weight:600;}
+.status-badge.show{display:inline-flex;}
+.status-badge .dot{width:7px;height:7px;border-radius:50%;}
+.status-badge.modified{background:var(--accent-soft);color:var(--accent-strong);}
+.status-badge.modified .dot{background:var(--accent);}
+.status-badge.saved{background:var(--success-soft);color:var(--success);}
+.status-badge.saved .dot{background:var(--success);}
+#topbar .spacer{flex:1;}
+.topbtn{
+  display:flex;align-items:center;gap:6px;background:var(--bg-elevated);color:var(--text-primary);
+  border:1px solid var(--border);padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-size:12.5px;
+  transition:background .12s,border-color .12s;
+}
+.topbtn:hover{background:var(--bg-hover);border-color:#3a3f4d;}
+.topbtn.primary{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);}
+.topbtn.primary:hover{background:rgba(217,164,65,.24);}
+.topbtn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ---------- Body layout ---------- */
+#body{flex:1;display:flex;min-height:0;}
+
+/* ---------- Activity bar ---------- */
+#activitybar{
+  width:var(--activitybar-w);flex:0 0 auto;background:var(--bg-panel);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;
+  padding-top:8px;gap:2px;
+}
+.abtn{
+  width:36px;height:36px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+  color:var(--text-dim);cursor:pointer;position:relative;font-size:17px;background:transparent;border:none;
+}
+.abtn:hover{color:var(--text-primary);background:var(--bg-hover);}
+.abtn.active{color:var(--accent-strong);background:var(--accent-soft);}
+.abtn.active::before{content:"";position:absolute;left:-9px;top:6px;bottom:6px;width:2px;background:var(--accent);border-radius:2px;}
+.abtn .tip{
+  position:absolute;left:44px;top:50%;transform:translateY(-50%);background:#0d0f14;color:var(--text-primary);
+  padding:4px 8px;border-radius:4px;font-size:11px;white-space:nowrap;border:1px solid var(--border);
+  opacity:0;pointer-events:none;transition:opacity .1s;z-index:50;
+}
+.abtn:hover .tip{opacity:1;}
+
+/* ---------- Sidebar ---------- */
+#sidebar{
+  width:var(--sidebar-w);flex:0 0 auto;background:var(--bg-panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;min-width:180px;max-width:480px;
+}
+#sidebar .sb-head{
+  padding:10px 12px 6px;font-size:11px;letter-spacing:.08em;color:var(--text-dim);
+  text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;
+}
+#sidebar .sb-head .actions{display:flex;gap:4px;}
+.icnbtn{
+  width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:var(--text-secondary);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;
+}
+.icnbtn:hover{background:var(--bg-hover);color:var(--text-primary);}
+
+#filetree{flex:1;overflow-y:auto;padding:2px 0 10px;}
+.dropzone{
+  margin:8px 10px;border:1.5px dashed var(--border);border-radius:var(--radius);
+  padding:16px 10px;text-align:center;color:var(--text-dim);font-size:11.5px;cursor:pointer;
+  transition:border-color .12s,color .12s,background .12s;
+}
+.dropzone:hover,.dropzone.dragover{border-color:var(--accent);color:var(--accent-strong);background:var(--accent-soft);}
+
+.frow{
+  display:flex;align-items:center;gap:6px;padding:5px 10px 5px 14px;cursor:pointer;color:var(--text-secondary);
+  border-left:2px solid transparent;font-size:12.5px;user-select:none;
+}
+.frow:hover{background:var(--bg-hover);color:var(--text-primary);}
+.frow.selected{background:var(--bg-elevated);color:var(--text-primary);border-left-color:var(--accent);}
+.frow.dragover-target{background:var(--accent-soft);outline:1px dashed var(--accent);outline-offset:-1px;}
+.frow.dragging{opacity:.4;}
+.frow .chevron{width:12px;flex:0 0 auto;font-size:9px;color:var(--text-dim);text-align:center;transition:transform .1s;}
+.frow .chevron.collapsed{transform:rotate(-90deg);}
+.frow .chevron.spacer{visibility:hidden;}
+.frow .ficon{width:15px;text-align:center;flex:0 0 auto;font-size:12px;color:var(--data);}
+.frow.folder .ficon{color:var(--accent);}
+.frow .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);}
+.frow .fname-input{
+  flex:1;background:var(--bg-input);border:1px solid var(--accent);color:var(--text-primary);
+  font-family:var(--mono);font-size:12px;padding:2px 4px;border-radius:3px;outline:none;
+}
+.frow .fsize{color:var(--text-dim);font-size:10.5px;flex:0 0 auto;}
+.frow .frowactions{display:flex;gap:2px;opacity:0;flex:0 0 auto;}
+.frow:hover .frowactions{opacity:1;}
+.frow .fact{color:var(--text-dim);width:18px;text-align:center;border-radius:3px;font-size:11px;}
+.frow .fact:hover{background:var(--bg-app);color:var(--text-primary);}
+.frow .fact.fdel:hover{color:var(--danger);}
+.sb-empty{padding:16px 14px;color:var(--text-dim);font-size:12px;line-height:1.6;}
+#filetree.root-dragover{outline:1px dashed var(--accent);outline-offset:-3px;background:var(--accent-soft);}
+
+/* ---------- Main / editor area ---------- */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg-app);}
+#tabbar{
+  flex:0 0 auto;display:flex;background:var(--bg-panel);border-bottom:1px solid var(--border);
+  overflow-x:auto;min-height:36px;
+}
+.tab{
+  display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;border-right:1px solid var(--border);
+  color:var(--text-secondary);cursor:pointer;font-size:12.5px;white-space:nowrap;background:transparent;
+  border-top:2px solid transparent;
+}
+.tab:hover{color:var(--text-primary);}
+.tab.active{color:var(--text-primary);background:var(--bg-app);border-top-color:var(--accent);}
+.tab .ticon{font-size:12px;color:var(--data);}
+.tab .tclose{color:var(--text-dim);width:16px;text-align:center;border-radius:3px;}
+.tab .tclose:hover{background:var(--bg-hover);color:var(--danger);}
+
+#panelhost{flex:1;overflow-y:auto;padding:22px 28px 60px;}
+.panel{max-width:920px;margin:0 auto;display:none;}
+.panel.active{display:block;animation:fadein .12s ease-out;}
+@keyframes fadein{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:none;}}
+
+.panel h1{font-size:16px;font-weight:600;margin:0 0 4px;color:var(--text-primary);}
+.panel .sub{color:var(--text-dim);font-size:12px;margin:0 0 22px;}
+.panel h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);margin:26px 0 10px;}
+.panel h2:first-of-type{margin-top:0;}
+
+.card{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px;}
+.card + .card{margin-top:10px;}
+
+.field{margin-bottom:14px;}
+.field:last-child{margin-bottom:0;}
+.field label{display:block;font-size:11.5px;color:var(--text-secondary);margin-bottom:5px;}
+.field .hint{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.5;}
+input[type=text],input[type=password],select,textarea{
+  width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);
+  padding:8px 10px;border-radius:var(--radius);font-size:12.5px;font-family:var(--sans);outline:none;
+  transition:border-color .12s;
+}
+input[type=text]:focus,input[type=password]:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:64px;font-family:var(--sans);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.mono{font-family:var(--mono) !important;}
+
+/* Header / hex-style table */
+table.kv{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.kv tr{border-bottom:1px solid var(--border-soft);}
+table.kv tr:last-child{border-bottom:none;}
+table.kv td{padding:8px 6px;vertical-align:top;}
+table.kv td.k{color:var(--text-dim);width:190px;font-size:11.5px;}
+table.kv td.v{font-family:var(--mono);color:var(--text-primary);}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:11px;font-family:var(--sans);}
+.badge.on{background:var(--success-soft);color:var(--success);}
+.badge.off{background:var(--bg-hover);color:var(--text-dim);}
+.badge.lock{background:var(--accent-soft);color:var(--accent-strong);}
+.badge.data{background:var(--data-soft);color:var(--data);}
+
+/* File table */
+table.ftbl{width:100%;border-collapse:collapse;font-size:12px;}
+table.ftbl thead th{
+  text-align:left;color:var(--text-dim);font-weight:500;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-panel);
+}
+table.ftbl tbody td{padding:8px 10px;border-bottom:1px solid var(--border-soft);font-family:var(--mono);color:var(--text-secondary);}
+table.ftbl tbody tr:hover td{color:var(--text-primary);}
+table.ftbl td.path{color:var(--text-primary);}
+table.ftbl td.hash{font-size:10.5px;color:var(--text-dim);}
+table.ftbl td.hash:hover{color:var(--data);}
+
+/* Structure visualization — hierarchy tree */
+.struct-tree{font-family:var(--mono);font-size:12.5px;}
+.struct-node{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:4px;}
+.struct-node:hover{background:var(--bg-hover);}
+.struct-node .sicon{
+  width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex:0 0 auto;color:#0d0f14;font-weight:700;
+}
+.struct-node .slabel{color:var(--text-primary);}
+.struct-node .smeta{color:var(--text-dim);font-size:11px;margin-left:auto;}
+.struct-branch{position:relative;margin-left:19px;padding-left:16px;border-left:1px dashed var(--border);}
+
+/* Structure visualization — byte bar */
+.structure-bar{display:flex;width:100%;height:54px;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+.structure-seg{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-right:1px solid var(--bg-app);font-size:10px;color:#1a1200;font-weight:700;min-width:2px;
+  cursor:default;
+}
+.structure-seg:last-child{border-right:none;}
+.structure-seg small{font-weight:500;font-size:9px;opacity:.75;}
+.structure-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;}
+.leg-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-secondary);}
+.leg-swatch{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+.chunklist{margin-top:18px;display:flex;flex-direction:column;gap:8px;}
+.chunkrow{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-panel);
+  border:1px solid var(--border);border-radius:var(--radius);
+}
+.chunkrow .ctag{
+  font-family:var(--mono);font-size:11px;font-weight:700;width:56px;flex:0 0 auto;padding:3px 0;
+  text-align:center;border-radius:4px;
+}
+.chunkrow .cmeta{flex:1;font-size:11.5px;color:var(--text-secondary);}
+.chunkrow .cbytes{font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+
+/* Buttons generic */
+.btn{
+  background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);
+  padding:8px 14px;border-radius:var(--radius);font-size:12.5px;cursor:pointer;
+}
+.btn:hover{background:var(--bg-hover);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#241a05;font-weight:600;}
+.btn.primary:hover{background:var(--accent-strong);}
+.btn.danger{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);}
+.btn.danger:hover{background:rgba(229,83,75,.24);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btnrow{display:flex;gap:8px;margin-top:16px;}
+
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;min-height:340px;text-align:center;color:var(--text-dim);gap:14px;
+}
+.empty-state .seal-lg{
+  width:64px;height:64px;border-radius:50%;
+  background:conic-gradient(from 220deg, var(--accent), var(--accent-strong), var(--accent));
+  box-shadow:0 0 30px var(--accent-soft);
+}
+.empty-state h1{color:var(--text-secondary);font-size:15px;}
+.empty-state p{max-width:360px;font-size:12px;line-height:1.6;}
+
+/* Preview panel */
+.previewbox{
+  background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px;font-family:var(--mono);font-size:12px;color:var(--text-secondary);
+  white-space:pre-wrap;word-break:break-all;max-height:360px;overflow:auto;
+}
+
+/* Toast */
+#toasthost{position:fixed;bottom:36px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:200;}
+.toast{
+  background:var(--bg-elevated);border:1px solid var(--border);border-left:3px solid var(--accent);
+  padding:10px 14px;border-radius:6px;font-size:12.5px;color:var(--text-primary);box-shadow:0 8px 24px rgba(0,0,0,.4);
+  min-width:220px;animation:slidein .15s ease-out;
+}
+.toast.err{border-left-color:var(--danger);}
+.toast.ok{border-left-color:var(--success);}
+@keyframes slidein{from{transform:translateX(12px);opacity:0;}to{transform:none;opacity:1;}}
+
+/* Status bar */
+#statusbar{
+  height:var(--statusbar-h);flex:0 0 auto;background:var(--accent);color:#241a05;display:flex;align-items:center;
+  padding:0 12px;font-size:11px;gap:16px;font-weight:600;
+}
+#statusbar.locked{background:#3a3f4d;color:var(--text-secondary);}
+#statusbar span{display:flex;align-items:center;gap:5px;}
+#statusbar .spacer{flex:1;}
+
+/* Modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(6,7,10,.6);display:none;align-items:center;justify-content:center;z-index:100;
+  backdrop-filter:blur(1px);
+}
+.modal-backdrop.show{display:flex;}
+.modal{
+  width:420px;max-width:92vw;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;
+  padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.modal h3{margin:0 0 4px;font-size:14.5px;}
+.modal p.sub{margin:0 0 16px;color:var(--text-dim);font-size:11.5px;}
+.modal .btnrow{justify-content:flex-end;}
+.seg{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.seg button{
+  flex:1;background:var(--bg-input);border:none;color:var(--text-secondary);padding:8px 0;cursor:pointer;font-size:12px;
+}
+.seg button.on{background:var(--accent-soft);color:var(--accent-strong);}
+.seg button + button{border-left:1px solid var(--border);}
+
+/* ======================================================================
+   EXTENSION BLOCK — icons, search, context menu, settings, recents,
+   stats, log panel, autosave badge, table totals. (added, nothing above
+   this line was removed)
+   ====================================================================== */
+
+/* ---- CSS-drawn icons (no emoji) ---- */
+.icon-search{position:relative;display:inline-block;width:12px;height:12px;}
+.icon-search::before{content:"";position:absolute;left:0;top:0;width:9px;height:9px;border:1.6px solid currentColor;border-radius:50%;}
+.icon-search::after{content:"";position:absolute;right:-1px;bottom:-1px;width:5px;height:1.6px;background:currentColor;transform:rotate(45deg);transform-origin:right center;}
+
+.icon-settings{position:relative;display:inline-block;width:16px;height:14px;}
+.icon-settings::before,.icon-settings::after{content:"";position:absolute;left:0;right:0;height:1.6px;background:currentColor;}
+.icon-settings::before{top:2px;}
+.icon-settings::after{bottom:2px;}
+.icon-settings .isl{position:absolute;left:0;right:0;top:50%;height:1.6px;background:currentColor;transform:translateY(-50%);}
+.icon-settings .knob{position:absolute;width:5px;height:5px;border-radius:50%;background:currentColor;top:-1.7px;}
+.icon-settings .k1{left:2px;}
+.icon-settings .k2{left:9px;top:4.3px;}
+.icon-settings .k3{left:4px;top:10.3px;}
+
+.icon-clock{position:relative;display:inline-block;width:14px;height:14px;border:1.6px solid currentColor;border-radius:50%;}
+.icon-clock::before{content:"";position:absolute;left:50%;top:50%;width:1.4px;height:5px;background:currentColor;transform:translate(-50%,-100%);transform-origin:bottom center;}
+.icon-clock::after{content:"";position:absolute;left:50%;top:50%;width:3.5px;height:1.4px;background:currentColor;transform:translate(0,-50%);transform-origin:left center;}
+
+.icon-chart{position:relative;display:inline-flex;align-items:flex-end;gap:2px;width:14px;height:14px;}
+.icon-chart span{display:block;width:3px;background:currentColor;border-radius:1px;}
+.icon-chart span:nth-child(1){height:6px;}
+.icon-chart span:nth-child(2){height:12px;}
+.icon-chart span:nth-child(3){height:9px;}
+
+.icon-log{position:relative;display:inline-block;width:14px;height:14px;}
+.icon-log span{display:block;height:1.6px;background:currentColor;border-radius:1px;margin-bottom:2.5px;}
+.icon-log span:nth-child(1){width:100%;}
+.icon-log span:nth-child(2){width:70%;}
+.icon-log span:nth-child(3){width:85%;}
+
+.icon-audio-file{position:relative;display:inline-block;width:13px;height:13px;border-radius:50%;background:var(--data-soft);}
+.icon-audio-file::before{content:"";position:absolute;left:4.5px;top:3px;width:0;height:0;border-style:solid;border-width:3.5px 0 3.5px 5px;border-color:transparent transparent transparent var(--data);}
+.icon-image-file{position:relative;display:inline-block;width:14px;height:11px;border:1.4px solid var(--success);border-radius:2px;overflow:hidden;}
+.icon-image-file::before{content:"";position:absolute;left:1.5px;top:1.5px;width:3px;height:3px;border-radius:50%;background:var(--success);}
+.icon-image-file::after{content:"";position:absolute;right:-2px;bottom:-3px;width:11px;height:11px;background:var(--success);opacity:.55;transform:rotate(45deg);}
+.icon-model-file{position:relative;display:inline-block;width:11px;height:11px;background:var(--accent);transform:rotate(45deg);border-radius:2px;}
+.icon-folder{position:relative;display:inline-block;width:14px;height:11px;}
+.icon-folder::before{content:"";position:absolute;left:0;top:0;width:6px;height:2.5px;background:currentColor;border-radius:1px 1px 0 0;}
+.icon-folder::after{content:"";position:absolute;left:0;top:2px;width:14px;height:9px;background:currentColor;border-radius:1.5px;opacity:.9;}
+.icon-keyboard{position:relative;display:inline-block;width:16px;height:12px;border:1.4px solid currentColor;border-radius:2px;}
+.icon-keyboard i{position:absolute;width:2px;height:2px;background:currentColor;border-radius:.5px;top:3px;}
+.icon-keyboard i:nth-child(1){left:2.5px;}
+.icon-keyboard i:nth-child(2){left:7px;}
+.icon-keyboard i:nth-child(3){left:11.5px;}
+.icon-keyboard b{position:absolute;left:2.5px;right:2.5px;bottom:2px;height:1.6px;background:currentColor;border-radius:1px;}
+.icon-book{position:relative;display:inline-block;width:14px;height:13px;}
+.icon-book::before,.icon-book::after{content:"";position:absolute;top:0;width:6px;height:13px;border:1.4px solid currentColor;}
+.icon-book::before{left:0;border-radius:3px 1px 1px 3px;border-right:none;}
+.icon-book::after{right:0;border-radius:1px 3px 3px 1px;border-left:none;}
+
+/* ---- Manual / tutorial accordion ---- */
+.manual-section{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
+.manual-section summary{
+  padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);list-style:none;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.manual-section summary::-webkit-details-marker{display:none;}
+.manual-section summary::after{content:"+";color:var(--text-dim);font-size:16px;font-weight:400;}
+.manual-section[open] summary::after{content:"−";}
+.manual-section summary:hover{background:var(--bg-hover);}
+.manual-body{padding:2px 16px 16px;color:var(--text-secondary);font-size:12.5px;line-height:1.7;}
+.manual-body ol,.manual-body ul{margin:6px 0;padding-left:20px;}
+.manual-body li{margin-bottom:4px;}
+.manual-body code{font-family:var(--mono);background:var(--bg-input);padding:1px 5px;border-radius:3px;font-size:11.5px;color:var(--accent-strong);}
+
+/* ---- New Project modal — pending files ---- */
+.pending-file-row{display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:11.5px;color:var(--text-secondary);font-family:var(--mono);}
+.pending-file-row .pf-remove{color:var(--text-dim);cursor:pointer;margin-left:auto;}
+.pending-file-row .pf-remove:hover{color:var(--danger);}
+.icon-command{position:relative;display:inline-block;width:14px;height:14px;}
+.icon-command span{position:absolute;width:5.5px;height:5.5px;border:1.5px solid currentColor;border-radius:2.5px;}
+.icon-command span:nth-child(1){left:0;top:0;}
+.icon-command span:nth-child(2){right:0;top:0;}
+.icon-command span:nth-child(3){left:0;bottom:0;}
+.icon-command span:nth-child(4){right:0;bottom:0;}
+
+/* ---- Explorer search ---- */
+.search-wrap{position:relative;margin:2px 10px 6px;}
+.search-wrap .icon-search{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-dim);}
+.search-input{
+  width:100%;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);
+  padding:6px 8px 6px 26px;border-radius:5px;font-size:11.5px;outline:none;
+}
+.search-input:focus{border-color:var(--accent);}
+.search-clear{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);color:var(--text-dim);cursor:pointer;
+  font-size:13px;width:16px;height:16px;display:none;align-items:center;justify-content:center;border-radius:3px;
+}
+.search-clear.show{display:flex;}
+.search-clear:hover{background:var(--bg-hover);color:var(--text-primary);}
+.frow .fname mark{background:var(--accent-soft);color:var(--accent-strong);border-radius:2px;}
+.search-nomatch{padding:14px;color:var(--text-dim);font-size:11.5px;text-align:center;}
+
+/* ---- Context menu ---- */
+.ctxmenu{
+  position:fixed;z-index:300;min-width:180px;background:var(--bg-elevated);border:1px solid var(--border);
+  border-radius:8px;padding:5px;box-shadow:0 14px 36px rgba(0,0,0,.5);display:none;
+}
+.ctxmenu.show{display:block;}
+.ctxmenu-item{
+  padding:7px 10px;border-radius:5px;font-size:12.5px;color:var(--text-primary);cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ctxmenu-item:hover{background:var(--bg-hover);}
+.ctxmenu-item.danger{color:var(--danger);}
+.ctxmenu-item.danger:hover{background:var(--danger-soft);}
+.ctxmenu-sep{height:1px;background:var(--border);margin:4px 2px;}
+
+/* ---- Settings toggle switch ---- */
+.toggle{position:relative;display:inline-block;width:34px;height:19px;flex:0 0 auto;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle .track{position:absolute;inset:0;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;transition:.15s;cursor:pointer;}
+.toggle .track::before{content:"";position:absolute;width:13px;height:13px;left:2px;top:2px;background:var(--text-dim);border-radius:50%;transition:.15s;}
+.toggle input:checked + .track{background:var(--accent-soft);border-color:var(--accent);}
+.toggle input:checked + .track::before{transform:translateX(15px);background:var(--accent);}
+.field.row-inline{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.field.row-inline label{margin:0;}
+
+/* ---- Recent projects ---- */
+.recent-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-panel);border:1px solid var(--border);
+  border-radius:8px;
+}
+.recent-item + .recent-item{margin-top:8px;}
+.recent-item .ricon{
+  width:34px;height:34px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;
+  color:var(--accent-strong);font-weight:700;font-family:var(--mono);font-size:12px;flex:0 0 auto;
+}
+.recent-item .rmain{flex:1;min-width:0;}
+.recent-item .rname{color:var(--text-primary);font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.recent-item .rmeta{color:var(--text-dim);font-size:11px;margin-top:2px;font-family:var(--mono);}
+.recent-item .ractions{display:flex;gap:6px;flex:0 0 auto;}
+
+/* ---- Stats ---- */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat-tile{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.stat-tile .stnum{font-size:20px;font-weight:700;color:var(--accent-strong);font-family:var(--mono);}
+.stat-tile .stlabel{font-size:11px;color:var(--text-dim);margin-top:4px;}
+.stat-bar-row{display:flex;align-items:center;gap:10px;padding:7px 0;}
+.stat-bar-row .sblabel{width:90px;flex:0 0 auto;font-size:11.5px;color:var(--text-secondary);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stat-bar-track{flex:1;height:8px;background:var(--bg-input);border-radius:5px;overflow:hidden;}
+.stat-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-strong));border-radius:5px;}
+.stat-bar-row .sbval{width:64px;flex:0 0 auto;text-align:right;font-size:11px;color:var(--text-dim);font-family:var(--mono);}
+
+/* ---- Log panel ---- */
+.log-entry{display:flex;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border-soft);font-size:12px;align-items:flex-start;}
+.log-entry:last-child{border-bottom:none;}
+.log-time{color:var(--text-dim);font-family:var(--mono);font-size:10.5px;flex:0 0 auto;padding-top:1px;width:64px;}
+.log-badge{flex:0 0 auto;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
+.log-badge.info{background:var(--data-soft);color:var(--data);}
+.log-badge.ok{background:var(--success-soft);color:var(--success);}
+.log-badge.error{background:var(--danger-soft);color:var(--danger);}
+.log-msg{flex:1;color:var(--text-secondary);line-height:1.5;}
+.log-empty{padding:24px;text-align:center;color:var(--text-dim);font-size:12px;}
+
+/* ---- Table footer totals ---- */
+table.ftbl tfoot td{padding:9px 10px;font-family:var(--mono);font-size:11.5px;color:var(--text-dim);border-top:1px solid var(--border);background:var(--bg-panel);position:sticky;bottom:0;}
+table.ftbl tfoot td b{color:var(--text-primary);}
+
+/* ---- Autosave badge variant ---- */
+.status-badge.autosaving{background:var(--data-soft);color:var(--data);}
+.entry-check-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+.entry-check-row:last-child{border-bottom:none;}
+.entry-check-row .ecpath{flex:1;font-family:var(--mono);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.entry-check-row.is-primary .ecpath{color:var(--accent-strong);font-weight:600;}
+.entry-check-row .ecbadge{font-size:10px;color:var(--accent-strong);background:var(--accent-soft);padding:1px 7px;border-radius:10px;}
+.previewbox.expanded{max-height:none;}
+.sign-status{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:6px;font-size:12px;margin-top:8px;}
+.sign-status.valid{background:var(--success-soft);color:var(--success);}
+.sign-status.invalid{background:var(--danger-soft);color:var(--danger);}
+.sign-status.none{background:var(--bg-input);color:var(--text-dim);}
+/* ---- Command palette ---- */
+.cmdpal-backdrop{position:fixed;inset:0;background:rgba(6,7,10,.55);display:none;align-items:flex-start;justify-content:center;z-index:400;padding-top:12vh;}
+.cmdpal-backdrop.show{display:flex;}
+.cmdpal{width:520px;max-width:92vw;background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.55);overflow:hidden;}
+.cmdpal-input{width:100%;background:var(--bg-input);border:none;border-bottom:1px solid var(--border);color:var(--text-primary);padding:14px 16px;font-size:14px;outline:none;}
+.cmdpal-list{max-height:340px;overflow-y:auto;padding:6px;}
+.cmdpal-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:6px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;}
+.cmdpal-item .cpi-key{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);background:var(--bg-input);padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
+.cmdpal-item.active{background:var(--accent-soft);color:var(--text-primary);}
+.cmdpal-empty{padding:20px;text-align:center;color:var(--text-dim);font-size:12px;}
+
+/* ---- Shortcuts help modal ---- */
+.shortcuts-grid{display:grid;grid-template-columns:1fr auto;gap:8px 14px;font-size:12.5px;}
+.shortcuts-grid .sc-label{color:var(--text-secondary);}
+.shortcuts-grid .sc-key{font-family:var(--mono);font-size:11px;color:var(--text-primary);background:var(--bg-input);padding:2px 8px;border-radius:4px;border:1px solid var(--border);white-space:nowrap;}
+
+/* ---- Media preview (audio / image) ---- */
+.media-preview{display:flex;align-items:center;justify-content:center;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.media-preview img{max-width:100%;max-height:420px;border-radius:4px;}
+.media-preview audio{width:100%;}
+.status-badge.autosaving .dot{background:var(--data);}
+
+/* ---- Topbar icon-only button ---- */
+.topbtn.icon-only{padding:6px 9px;}
+
+/* ---- Explorer folder-drop-active (external OS files) ---- */
+.frow.folder.filedrop-active{outline:1px solid var(--success);background:var(--success-soft);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= TOP BAR ================= -->
+  <div id="topbar">
+    <div class="brand"><span class="seal">J</span> JNO Studio</div>
+    <div class="filename" id="filenameDisplay">프로젝트 없음</div>
+    <span class="status-badge" id="statusBadge"><span class="dot"></span><span id="statusBadgeText">Saved</span></span>
+    <span class="status-badge autosaving" id="autosaveBadge" style="display:none;"><span class="dot"></span><span id="autosaveBadgeText">Autosave off</span></span>
+    <div class="spacer"></div>
+    <button class="topbtn icon-only" id="btnSettings" title="설정"><span class="icon-settings"><span class="isl"></span><span class="knob k1"></span><span class="knob k2"></span><span class="knob k3"></span></span></button>
+    <button class="topbtn icon-only" id="btnShortcuts" title="단축키 (Shift + /)"><span class="icon-keyboard"><i></i><i></i><i></i><b></b></span></button>
+    <button class="topbtn" id="btnNew">＋ New</button>
+    <button class="topbtn" id="btnOpen">📂 Open .jno</button>
+    <input type="file" id="fileOpenInput" accept=".jno" style="display:none">
+    <button class="topbtn primary" id="btnSave" disabled>⤓ Save .jno</button>
+  </div>
+
+  <!-- ================= BODY ================= -->
+  <div id="body">
+
+    <!-- Activity bar -->
+    <div id="activitybar">
+      <button class="abtn active" data-panel="explorer" title="Explorer">🗂<span class="tip">Explorer</span></button>
+      <button class="abtn" data-panel="manifest" title="Manifest">📋<span class="tip">Manifest</span></button>
+      <button class="abtn" data-panel="header" title="Header">🔖<span class="tip">Header</span></button>
+      <button class="abtn" data-panel="filetable" title="File Table">📊<span class="tip">File Table</span></button>
+      <button class="abtn" data-panel="security" title="Security">🔒<span class="tip">Security</span></button>
+      <button class="abtn" data-panel="structure" title="Structure">🧩<span class="tip">Structure</span></button>
+      <button class="abtn" data-panel="recent" title="Recent Projects"><span class="icon-clock"></span><span class="tip">Recent Projects</span></button>
+      <button class="abtn" data-panel="stats" title="Statistics"><span class="icon-chart"><span></span><span></span><span></span></span><span class="tip">Statistics</span></button>
+      <button class="abtn" data-panel="log" title="Log"><span class="icon-log"><span></span><span></span><span></span></span><span class="tip">Log</span></button>
+      <button class="abtn" data-panel="manual" title="매뉴얼 / 튜토리얼"><span class="icon-book"></span><span class="tip">매뉴얼 / 튜토리얼</span></button>
+    </div>
+
+    <!-- Sidebar (Explorer) -->
+    <div id="sidebar">
+      <div class="sb-head">
+        <span>Explorer</span>
+        <div class="actions">
+          <button class="icnbtn" id="btnNewFile" title="새 파일">📄⁺</button>
+          <button class="icnbtn" id="btnNewFolder" title="새 폴더">📁⁺</button>
+          <button class="icnbtn" id="btnAddFile" title="파일 업로드">⬆</button>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <span class="icon-search"></span>
+        <input type="text" class="search-input" id="explorerSearch" placeholder="파일 및 폴더 검색">
+        <span class="search-clear" id="explorerSearchClear">×</span>
+      </div>
+      <div id="filetree"></div>
+      <input type="file" id="fileAddInput" multiple style="display:none">
+    </div>
+
+    <!-- Main -->
+    <div id="main">
+      <div id="tabbar"></div>
+      <div id="panelhost">
+
+        <!-- Empty state (no project) -->
+        <div class="panel active" id="panel-empty">
+          <div class="empty-state">
+            <div class="seal-lg"></div>
+            <h1>열려 있는 JNO 프로젝트가 없습니다</h1>
+            <p>새 프로젝트를 만들거나 기존 .jno 컨테이너를 열어서 구조를 확인·편집할 수 있습니다.</p>
+            <div class="btnrow">
+              <button class="btn primary" id="emptyNewBtn">새 프로젝트</button>
+              <button class="btn" id="emptyOpenBtn">.jno 열기</button>
+              <button class="btn" id="restoreAutosaveBtn" style="display:none;">자동 저장 데이터 복원</button>
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="emptyRecentBtn">최근 프로젝트 보기</button>
+              <button class="btn" id="emptyDemoBtn">예제 프로젝트 둘러보기</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manifest panel -->
+        <div class="panel" id="panel-manifest">
+          <h1>Manifest</h1>
+          <p class="sub">프로젝트를 설명하는 메타데이터입니다. AI 및 도구가 이 정보를 통해 프로젝트를 빠르게 파악합니다.</p>
+          <div class="card">
+            <div class="row2">
+              <div class="field"><label>Project Name</label><input type="text" id="mf-name" placeholder="my-project"><div class="hint" id="mf-name-err" style="color:var(--danger);display:none;">Project Name은 비워둘 수 없습니다.</div></div>
+              <div class="field"><label>Version</label><input type="text" id="mf-version" placeholder="1.0.0"><div class="hint" id="mf-version-err" style="color:var(--danger);display:none;">권장 형식: MAJOR.MINOR.PATCH (예: 1.0.0)</div></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Author</label><input type="text" id="mf-author" placeholder="User"></div>
+              <div class="field"><label>Language</label>
+                <select id="mf-language">
+                  <option>Python</option><option>HTML</option><option>CSS</option><option>JavaScript</option>
+                  <option>C</option><option>C++</option><option>C#</option><option>JSON</option><option>XML</option>
+                  <option>CSV</option><option>ONNX</option><option>Markdown</option><option>Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label>Entry File</label><select id="mf-entry"></select><div class="hint" id="mf-entry-err" style="color:var(--accent-strong);display:none;">지정된 Entry File이 프로젝트에 존재하지 않습니다.</div></div>
+            <div class="field"><label>Description (선택) <span class="hint" id="mf-desc-count" style="display:inline;">0/300</span></label><textarea id="mf-description" maxlength="300" placeholder="프로젝트에 대한 짧은 설명"></textarea></div>
+            <div class="field hint">jno_spec_version: <b class="mono" id="mf-specver">1.0</b> · created_at: <span class="mono" id="mf-created">—</span></div>
+          </div>
+          <div class="btnrow"><button class="btn primary" id="mfSaveBtn">Manifest 저장</button></div>
+
+          <h2>Entry Points (v2 — 다중 진입점)</h2>
+          <p class="sub">위에서 지정한 Primary Entry 외에, 함께 실행 가능한 추가 진입점을 선택할 수 있습니다. manifest.entries 배열로 저장됩니다.</p>
+          <div class="card">
+            <div id="mf-entries-list"></div>
+            <div class="hint" id="mf-entries-empty" style="display:none;">추가할 파일이 없습니다.</div>
+          </div>
+
+          <h2>AI 에이전트 지시사항 (v2 — AIIN 청크)</h2>
+          <p class="sub">별도의 AIIN 청크에 저장되어, AI 도구가 이 프로젝트를 다룰 때 참고할 수 있는 지시사항입니다. Manifest와 동일한 보안 모드로 암호화됩니다.</p>
+          <div class="card">
+            <div class="field"><label>지시사항</label><textarea id="ai-instructions" placeholder="예: 이 프로젝트를 수정할 때는 항상 tests/를 먼저 실행하세요."></textarea></div>
+            <div class="field"><label>우선순위 파일 (한 줄에 하나씩)</label><textarea id="ai-priority-files" placeholder="src/main.py&#10;README.md"></textarea></div>
+            <div class="field"><label>제약사항 (한 줄에 하나씩)</label><textarea id="ai-constraints" placeholder="node_modules/는 수정하지 마세요"></textarea></div>
+          </div>
+          <div class="btnrow"><button class="btn primary" id="aiSaveBtn">AI 지시사항 저장</button></div>
+        </div>
+
+        <!-- Header panel -->
+        <div class="panel" id="panel-header">
+          <h1>Header</h1>
+          <p class="sub">파일 최상단 32바이트 고정 헤더입니다. 매직 넘버, 버전, 플래그, 오프셋 정보를 담습니다.</p>
+          <div class="card">
+            <table class="kv" id="headerTable"></table>
+          </div>
+          <h2>편집 가능한 필드</h2>
+          <div class="card">
+            <div class="row2">
+              <div class="field"><label>Version Major (고정)</label><input type="text" class="mono" value="1" disabled></div>
+              <div class="field"><label>Version Minor</label><input type="text" class="mono" id="hdr-versionminor" placeholder="0"></div>
+            </div>
+            <div class="hint">Minor 버전은 동일한 major 규격 내에서 하위 호환 확장을 표시하는 데 사용됩니다. 숫자(0~255)만 입력하세요.</div>
+            <div class="hint" id="hdr-fullenc-note" style="display:none;color:var(--danger);">Full Encryption 모드로 저장하면 이 헤더의 File Count가 0으로 기록되어, 비밀번호 없이는 파일 개수조차 알 수 없습니다.</div>
+          </div>
+        </div>
+
+        <!-- File Table panel -->
+        <div class="panel" id="panel-filetable">
+          <h1>File Table</h1>
+          <p class="sub">FDAT 청크 내부에 저장된 각 파일의 메타데이터(중앙 디렉터리 방식)입니다.</p>
+          <div class="card" style="padding:0;overflow:auto;max-height:520px;">
+            <table class="ftbl" id="fileTableEl">
+              <thead><tr><th>File Name</th><th>Path</th><th>Size</th><th>Compression</th><th>SHA-256</th><th>Offset</th></tr></thead>
+              <tbody></tbody>
+              <tfoot><tr><td colspan="6" id="fileTableTotals">—</td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Security panel -->
+        <div class="panel" id="panel-security">
+          <h1>Security</h1>
+          <p class="sub">비밀번호 보호 모드에서는 Manifest · File Table · File Data가 모두 AES-256-GCM으로 암호화됩니다 (완전 비공개).</p>
+          <div class="card">
+            <div class="field">
+              <label>보안 모드</label>
+              <div class="seg">
+                <button data-sec="1" id="secPublicBtn">1 · Public</button>
+                <button data-sec="2" id="secPasswordBtn">2 · Password Protected</button>
+                <button data-sec="3" id="secFullBtn">3 · Full Encryption</button>
+              </div>
+            </div>
+            <div class="field" id="pwFieldWrap" style="display:none;">
+              <label>비밀번호</label>
+              <input type="password" id="mf-password" placeholder="새 비밀번호 입력">
+              <div class="hint" id="pwHintText">키 유도: PBKDF2-SHA256 · 200,000 iterations · salt 16B<br>암호화: AES-256-GCM (파일별 개별 nonce, MANI/FTBL/FDAT/AIIN 각각 암호화)</div>
+            </div>
+          </div>
+          <div class="btnrow"><button class="btn primary" id="secSaveBtn">보안 설정 저장</button></div>
+
+          <h2>디지털 서명 (v2 — SIGN 청크)</h2>
+          <p class="sub">이 기기에 저장된 서명 키로 파일에 서명합니다. 파일이 변조되지 않았고 동일한 키로 저장되었음을 증명하지만, 실명 신원을 확인하는 것은 아닙니다.</p>
+          <div class="card">
+            <div class="field row-inline">
+              <label>이 프로젝트에 서명</label>
+              <label class="toggle"><input type="checkbox" id="sec-signed"><span class="track"></span></label>
+            </div>
+            <div class="hint" id="signKeyHint">설정에서 서명 키를 먼저 생성해주세요.</div>
+            <div id="signVerifyStatus"></div>
+          </div>
+
+          <h2>Compression (뼈대)</h2>
+          <div class="card">
+            <div class="field">
+              <label>Compression ID</label>
+              <select id="compSelect">
+                <option value="0">0x00 · Store (무압축) — v1 지원</option>
+                <option value="1" disabled>0x01 · Reserved (미래 확장)</option>
+                <option value="2" disabled>0x02 · Reserved (미래 확장)</option>
+              </select>
+              <div class="hint">v1은 압축 알고리즘을 구현하지 않고 compression_id 기반 인터페이스만 제공합니다. 추후 알고리즘이 확정되면 이 목록에 등록됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Structure panel -->
+        <div class="panel" id="panel-structure">
+          <h1>내부 구조 시각화</h1>
+          <p class="sub">JNO 컨테이너를 구성하는 청크의 계층 구조와 실제 바이트 레이아웃입니다.</p>
+
+          <h2>계층 구조</h2>
+          <div class="card">
+            <div class="struct-tree" id="structureTree"></div>
+          </div>
+
+          <h2>바이트 레이아웃</h2>
+          <div class="card">
+            <div class="structure-bar" id="structureBar"></div>
+            <div class="structure-legend" id="structureLegend"></div>
+          </div>
+          <h2>Chunk 목록</h2>
+          <div class="chunklist" id="chunkList"></div>
+
+          <h2>내보내기 (Export)</h2>
+          <p class="sub">실제 파일 데이터가 아닌, Manifest·File Table·통계 등 프로젝트 정보를 JSON 또는 Markdown 문서로 내려받습니다.</p>
+          <div class="btnrow" style="margin-top:0;">
+            <button class="btn" id="exportJsonBtn">JSON으로 내보내기</button>
+            <button class="btn" id="exportMdBtn">Markdown으로 내보내기</button>
+          </div>
+        </div>
+
+        <!-- Recent projects panel -->
+        <div class="panel" id="panel-recent">
+          <h1>최근 프로젝트</h1>
+          <p class="sub">이 브라우저에 저장되거나 열린 프로젝트 기록입니다 (최대 8개, 로컬 저장소에 보관).</p>
+          <div id="recentList"></div>
+          <div class="btnrow"><button class="btn danger" id="clearRecentsBtn">기록 전체 삭제</button></div>
+        </div>
+
+        <!-- Statistics panel -->
+        <div class="panel" id="panel-stats">
+          <h1>프로젝트 통계</h1>
+          <p class="sub">현재 프로젝트의 파일 구성과 용량 분포입니다.</p>
+          <div class="stat-grid" id="statTiles"></div>
+          <h2>확장자별 용량 분포</h2>
+          <div class="card" id="statExtBreakdown"></div>
+          <h2>요약</h2>
+          <div class="card"><table class="kv" id="statSummaryTable"></table></div>
+        </div>
+
+        <!-- Log panel -->
+        <div class="panel" id="panel-log">
+          <h1>오류 / 활동 로그</h1>
+          <p class="sub">프로젝트 작업 중 발생한 정보성 메시지와 오류를 시간순으로 기록합니다.</p>
+          <div class="btnrow" style="margin:0 0 14px;"><button class="btn danger" id="clearLogBtn">로그 지우기</button></div>
+          <div class="card" style="padding:0;overflow:hidden;" id="logHost"></div>
+        </div>
+
+        <!-- Manual / tutorial panel -->
+        <div class="panel" id="panel-manual">
+          <h1>매뉴얼 / 튜토리얼</h1>
+          <p class="sub">JNO Studio의 기능을 처음부터 하나씩 설명합니다. 필요한 항목만 펼쳐서 보세요.</p>
+
+          <details class="manual-section" open>
+            <summary>1. 처음 시작하기</summary>
+            <div class="manual-body">
+              <ol>
+                <li>상단의 <code>New</code> 버튼(또는 <code>Ctrl/⌘ N</code>)으로 새 프로젝트를 만듭니다. 이때 파일을 여러 개 한 번에 추가할 수도 있습니다.</li>
+                <li>왼쪽 Explorer에서 <code>📄⁺</code> / <code>📁⁺</code> 버튼이나 드래그 앤 드롭으로 파일·폴더를 계속 추가/정리합니다.</li>
+                <li>Manifest 패널에서 프로젝트 이름·버전·Entry File을 채웁니다.</li>
+                <li>필요하면 Security 패널에서 비밀번호 보호나 서명을 설정합니다.</li>
+                <li>상단의 <code>Save .jno</code>(또는 <code>Ctrl/⌘ S</code>)로 실제 <code>.jno</code> 파일을 내려받습니다.</li>
+              </ol>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>2. Explorer (파일 탐색기)</summary>
+            <div class="manual-body">
+              <ul>
+                <li>파일/폴더를 드래그해서 다른 폴더로 이동할 수 있습니다.</li>
+                <li>행에 마우스를 올리면 이름변경(✎)·삭제(✕) 아이콘이 나타나고, 우클릭하면 더 많은 메뉴가 열립니다.</li>
+                <li>상단 검색창에 입력하면 이름이 일치하는 파일/폴더만 표시됩니다.</li>
+                <li>mp3/wav/ogg, png/jpg/jpeg/svg 파일은 미리보기 패널에서 바로 재생·표시됩니다.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>3. Manifest — 다중 Entry Point</summary>
+            <div class="manual-body">
+              <p>Primary Entry 외에 함께 실행 가능한 추가 진입점을 체크박스로 지정할 수 있습니다. 저장 시 <code>manifest.entries</code> 배열로 기록됩니다.</p>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>4. AI 에이전트 지시사항 (AIIN 청크)</summary>
+            <div class="manual-body">
+              <p>AI 도구가 이 프로젝트를 다룰 때 참고할 지시사항·우선순위 파일·제약사항을 별도의 AIIN 청크에 저장합니다. 암호화 모드에서는 이 청크도 함께 암호화됩니다.</p>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>5. Security — 3단계 보안 모드</summary>
+            <div class="manual-body">
+              <ul>
+                <li><b>1 · Public</b> — 암호화 없음.</li>
+                <li><b>2 · Password Protected</b> — Manifest/File Table/File Data/AI 지시사항 전부 AES-256-GCM으로 암호화.</li>
+                <li><b>3 · Full Encryption</b> — 2번의 모든 암호화에 더해, 헤더의 File Count까지 0으로 감춰 파일 개수조차 노출하지 않습니다.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>6. 디지털 서명</summary>
+            <div class="manual-body">
+              <p>설정에서 이 기기 전용 서명 키(ECDSA P-256)를 생성한 뒤, Security 패널에서 서명을 켜면 저장 시 SIGN 청크가 추가됩니다. 이는 <b>같은 키 소유자가 저장했고 파일이 변조되지 않았음</b>을 증명하는 것이며, 실명 신원 확인은 아닙니다.</p>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>7. Structure & 내보내기</summary>
+            <div class="manual-body">
+              <p>Structure 패널에서 청크 계층 구조와 실제 바이트 레이아웃을 확인할 수 있고, 하단의 내보내기 버튼으로 프로젝트 정보(Manifest·File Table·통계)를 JSON 또는 Markdown 문서로 따로 내려받을 수 있습니다. (실제 파일 데이터는 포함되지 않습니다.)</p>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>8. 자동 저장 · 최근 프로젝트</summary>
+            <div class="manual-body">
+              <p>변경사항은 브라우저에 주기적으로 자동 저장됩니다(설정에서 간격 조절 가능). 저장하거나 연 프로젝트는 Recent 패널에 기록되어 다시 빠르게 열 수 있습니다.</p>
+            </div>
+          </details>
+
+          <details class="manual-section">
+            <summary>9. 단축키</summary>
+            <div class="manual-body">
+              <div class="shortcuts-grid">
+                <span class="sc-label">명령 팔레트</span><span class="sc-key">Ctrl / ⌘ K</span>
+                <span class="sc-label">새 프로젝트</span><span class="sc-key">Ctrl / ⌘ N</span>
+                <span class="sc-label">.jno 열기</span><span class="sc-key">Ctrl / ⌘ O</span>
+                <span class="sc-label">.jno 저장</span><span class="sc-key">Ctrl / ⌘ S</span>
+                <span class="sc-label">검색 포커스</span><span class="sc-key">Ctrl / ⌘ F</span>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- File preview panel (dynamic, one reused container) -->
+        <div class="panel" id="panel-preview">
+          <h1 id="previewTitle">파일</h1>
+          <p class="sub" id="previewSub"></p>
+          <div class="card">
+            <table class="kv">
+              <tr><td class="k">Size</td><td class="v" id="pv-size">—</td></tr>
+              <tr><td class="k">SHA-256</td><td class="v" id="pv-sha">—</td></tr>
+              <tr><td class="k">Compression</td><td class="v" id="pv-comp">—</td></tr>
+            </table>
+          </div>
+          <h2>미리보기 <span class="hint" id="pv-truncnotice" style="display:none;">— 긴 파일은 일부만 표시됩니다</span></h2>
+          <div class="previewbox" id="pv-content">—</div>
+          <div class="btnrow" id="pv-showall-row" style="display:none;">
+            <button class="btn" id="pv-showall-btn">전체 보기</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STATUS BAR ================= -->
+  <div id="statusbar">
+    <span id="stSecurity">🔓 Public</span>
+    <span id="stFiles">0 files</span>
+    <span id="stSize">0 B</span>
+    <span id="stComp">Compression: Store</span>
+    <span id="stSaved">Not saved yet</span>
+    <div class="spacer"></div>
+    <span id="stSpec">JNO v1.0</span>
+  </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+<div class="modal-backdrop" id="modalNew">
+  <div class="modal" style="width:460px;">
+    <h3>새 JNO 프로젝트</h3>
+    <p class="sub">기본 Manifest 정보를 입력하세요. 나중에 언제든 수정할 수 있습니다.</p>
+    <div class="field"><label>Project Name</label><input type="text" id="new-name" value="my-project"></div>
+    <div class="row2">
+      <div class="field"><label>Version</label><input type="text" id="new-version" value="1.0.0"></div>
+      <div class="field"><label>Author</label><input type="text" id="new-author" value="User"></div>
+    </div>
+    <div class="field"><label>Language</label>
+      <select id="new-language">
+        <option>Python</option><option>HTML</option><option>CSS</option><option>JavaScript</option>
+        <option>C</option><option>C++</option><option>C#</option><option>JSON</option><option>XML</option>
+        <option>CSV</option><option>ONNX</option><option>Markdown</option><option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>초기 파일 (선택, 여러 개 한번에 추가 가능)</label>
+      <div class="dropzone" id="newProjectDropzone">파일을 드래그하거나 클릭해서 여러 개 추가</div>
+      <input type="file" id="newProjectFileInput" multiple style="display:none">
+      <div id="newProjectFileList"></div>
+    </div>
+    <div class="btnrow">
+      <button class="btn" id="newCancelBtn">취소</button>
+      <button class="btn primary" id="newCreateBtn">생성</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalPassword">
+  <div class="modal">
+    <h3 id="pwModalTitle">비밀번호 필요</h3>
+    <p class="sub" id="pwModalSub">이 .jno 파일은 비밀번호로 보호되어 있습니다. Manifest와 파일 내용을 보려면 비밀번호를 입력하세요.</p>
+    <div class="field"><input type="password" id="pw-input" placeholder="비밀번호"></div>
+    <div class="field hint" id="pwErrorMsg" style="color:var(--danger);display:none;">비밀번호가 올바르지 않습니다.</div>
+    <div class="btnrow">
+      <button class="btn" id="pwCancelBtn">취소</button>
+      <button class="btn primary" id="pwConfirmBtn">열기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalSettings">
+  <div class="modal" style="width:440px;">
+    <h3>프로젝트 설정</h3>
+    <p class="sub">JNO Studio 동작 방식을 구성합니다. 이 설정은 브라우저에 저장되며 모든 프로젝트에 적용됩니다.</p>
+    <div class="field"><label>기본 Author (새 프로젝트 생성 시 자동 입력)</label><input type="text" id="set-default-author" placeholder="User"></div>
+    <div class="field row-inline">
+      <label>자동 저장 사용</label>
+      <label class="toggle"><input type="checkbox" id="set-autosave-enabled"><span class="track"></span></label>
+    </div>
+    <div class="field"><label>자동 저장 간격</label>
+      <select id="set-autosave-interval">
+        <option value="5">5초</option>
+        <option value="15">15초</option>
+        <option value="30">30초</option>
+        <option value="60">60초</option>
+      </select>
+    </div>
+    <div class="btnrow">
+      <button class="btn danger" id="clearAutosaveBtn">자동 저장 데이터 삭제</button>
+    </div>
+    <div class="field" style="margin-top:6px;"><label>서명 키 (ECDSA P-256, 이 기기에만 저장)</label>
+      <div class="hint" id="settingsKeyFingerprint">생성된 서명 키가 없습니다.</div>
+    </div>
+    <div class="btnrow">
+      <button class="btn" id="genKeyBtn">서명 키 생성</button>
+      <button class="btn danger" id="clearKeyBtn">서명 키 삭제</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn" id="settingsCancelBtn">닫기</button>
+      <button class="btn primary" id="settingsSaveBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="ctxmenu" id="ctxMenu"></div>
+
+<div class="cmdpal-backdrop" id="cmdPalette">
+  <div class="cmdpal">
+    <input type="text" class="cmdpal-input" id="cmdPaletteInput" placeholder="명령 검색… (예: 저장, 새 파일, 서명)">
+    <div class="cmdpal-list" id="cmdPaletteList"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalShortcuts">
+  <div class="modal" style="width:420px;">
+    <h3>단축키</h3>
+    <p class="sub">JNO Studio에서 사용할 수 있는 키보드 단축키입니다.</p>
+    <div class="shortcuts-grid">
+      <span class="sc-label">명령 팔레트 열기</span><span class="sc-key">Ctrl / ⌘ K</span>
+      <span class="sc-label">새 프로젝트</span><span class="sc-key">Ctrl / ⌘ N</span>
+      <span class="sc-label">.jno 열기</span><span class="sc-key">Ctrl / ⌘ O</span>
+      <span class="sc-label">.jno 저장</span><span class="sc-key">Ctrl / ⌘ S</span>
+      <span class="sc-label">파일/폴더 검색</span><span class="sc-key">Ctrl / ⌘ F</span>
+      <span class="sc-label">미리보기 파일 삭제</span><span class="sc-key">Delete</span>
+      <span class="sc-label">모달 · 메뉴 닫기</span><span class="sc-key">Esc</span>
+      <span class="sc-label">이 도움말 열기</span><span class="sc-key">Shift + /</span>
+    </div>
+    <div class="btnrow"><button class="btn primary" id="shortcutsCloseBtn">닫기</button></div>
+  </div>
+</div>
+
+<div id="toasthost"></div>
+
+<script>
+"use strict";
+/* ======================================================================
+   MODULE: Util — byte helpers, encoding, formatting
+   ====================================================================== */
+const Util = (() => {
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8");
+
+  function concatBytes(chunks) {
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  }
+  function toHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function fromHex(hex) {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+  }
+  function fmtBytes(n) {
+    if (n < 1024) return n + " B";
+    const units = ["KB", "MB", "GB", "TB"];
+    let u = -1;
+    do { n /= 1024; u++; } while (n >= 1024 && u < units.length - 1);
+    return n.toFixed(n < 10 ? 2 : 1) + " " + units[u];
+  }
+  function nowISO() { return new Date().toISOString(); }
+  function randomBytes(n) {
+    const b = new Uint8Array(n);
+    crypto.getRandomValues(b);
+    return b;
+  }
+  function bytesToBase64(bytes) {
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+  function base64ToBytes(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+  return { enc, dec, concatBytes, toHex, fromHex, fmtBytes, nowISO, randomBytes, bytesToBase64, base64ToBytes };
+})();
+
+/* ======================================================================
+   MODULE: CRC32 — table-based, standard polynomial 0xEDB88320
+   ====================================================================== */
+const CRC32 = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  function compute(bytes) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  return { compute };
+})();
+
+/* ======================================================================
+   MODULE: JnoCrypto — SHA-256, PBKDF2 key derivation, AES-256-GCM
+   ====================================================================== */
+const JnoCrypto = (() => {
+  const PBKDF2_ITERATIONS = 200000;
+
+  async function sha256(bytes) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return new Uint8Array(digest);
+  }
+  async function deriveKey(password, salt, iterations = PBKDF2_ITERATIONS) {
+    const baseKey = await crypto.subtle.importKey(
+      "raw", Util.enc.encode(password), "PBKDF2", false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+  async function encrypt(key, iv, plaintext) {
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+    return new Uint8Array(ct); // ciphertext + 16-byte GCM tag appended
+  }
+  async function decrypt(key, iv, ciphertext) {
+    // throws if the auth tag doesn't verify (wrong password / tampered data)
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    return new Uint8Array(pt);
+  }
+  return { sha256, deriveKey, encrypt, decrypt, PBKDF2_ITERATIONS };
+})();
+
+/* ======================================================================
+   MODULE: SignKey — device-local ECDSA P-256 signing identity.
+   ------------------------------------------------------------------------
+   This proves "the same key holder saved/re-saved this file" and that the
+   signed bytes were not altered — it is NOT a real-world identity check.
+   The private key never leaves this browser's localStorage.
+   ====================================================================== */
+const SignKey = (() => {
+  const KEY = "jno_studio_signkey_v1";
+  const ALG = { name: "ECDSA", namedCurve: "P-256" };
+
+  function hasKeypair() { return !!localStorage.getItem(KEY); }
+
+  async function generate() {
+    const pair = await crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
+    const publicKeyJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+    const privateKeyJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+    localStorage.setItem(KEY, JSON.stringify({ publicKeyJwk, privateKeyJwk }));
+    return fingerprint(publicKeyJwk);
+  }
+  function clear() { localStorage.removeItem(KEY); }
+  function getStored() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; }
+  }
+  async function fingerprint(publicKeyJwk) {
+    const digest = await JnoCrypto.sha256(Util.enc.encode(JSON.stringify(publicKeyJwk)));
+    const hex = Util.toHex(digest).slice(0, 16).toUpperCase();
+    return hex.match(/.{1,4}/g).join("-");
+  }
+  async function currentFingerprint() {
+    const stored = getStored();
+    return stored ? fingerprint(stored.publicKeyJwk) : null;
+  }
+  async function signDigest(digestBytes) {
+    const stored = getStored();
+    if (!stored) throw new Error("서명 키가 없습니다. 설정에서 먼저 키를 생성하세요.");
+    const privateKey = await crypto.subtle.importKey("jwk", stored.privateKeyJwk, ALG, false, ["sign"]);
+    const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey, digestBytes);
+    return { publicKeyJwk: stored.publicKeyJwk, signature: Util.bytesToBase64(new Uint8Array(sig)) };
+  }
+  async function verifyDigest(publicKeyJwk, signatureB64, digestBytes) {
+    try {
+      const publicKey = await crypto.subtle.importKey("jwk", publicKeyJwk, ALG, false, ["verify"]);
+      const sig = Util.base64ToBytes(signatureB64);
+      return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, publicKey, sig, digestBytes);
+    } catch { return false; }
+  }
+  return { hasKeypair, generate, clear, getStored, fingerprint, currentFingerprint, signDigest, verifyDigest };
+})();
+
+/* ======================================================================
+   MODULE: JnoFormat — binary writer / reader for the .jno v1 layout
+   ------------------------------------------------------------------------
+   HEADER (32 bytes, fixed):
+     0  magic[4]        "JNO1"
+     4  version_major   u8   = 1
+     5  version_minor   u8   = 0
+     6  flags           u8   bit0 = encrypted
+     7  compression_id  u8   global default (0x00 = Store)
+     8  security        u8   1 = Public, 2 = Password Protected
+     9  reserved        u8
+    10  file_count      u32 LE
+    14  reserved[18]
+
+   CHUNK: type[4 ascii] + length(u64 LE) + data[length] + crc32(u32 LE of data)
+     SECU  (only if encrypted) salt[16] iterations(u32) iv_mani[12] iv_ftbl[12] iv_fdat[12]
+     MANI  UTF-8 JSON manifest              (ciphertext+tag if encrypted)
+     FTBL  UTF-8 JSON array of file entries (ciphertext+tag if encrypted)
+     FDAT  concatenated raw file bytes      (ciphertext+tag if encrypted)
+     CKSM  (footer) 32 raw bytes: SHA-256 over every byte preceding this chunk
+   ====================================================================== */
+const JnoFormat = (() => {
+  const MAGIC = [0x4A, 0x4E, 0x4F, 0x31]; // "JNO1"
+  const HEADER_SIZE = 32;
+  const SPEC_VERSION = { major: 1, minor: 0 };
+
+  function writeHeader({ security, encrypted, compressionId, fileCount, versionMinor }) {
+    const buf = new Uint8Array(HEADER_SIZE);
+    const dv = new DataView(buf.buffer);
+    buf.set(MAGIC, 0);
+    dv.setUint8(4, SPEC_VERSION.major);
+    dv.setUint8(5, versionMinor ?? SPEC_VERSION.minor);
+    const fullEncryption = security === 3;
+    dv.setUint8(6, (encrypted ? 0b00000001 : 0) | (fullEncryption ? 0b00000010 : 0));
+    dv.setUint8(7, compressionId);
+    dv.setUint8(8, security);
+    dv.setUint8(9, 0);
+    // Full Encryption mode hides the file count from the header — it is
+    // only recoverable after decrypting FTBL with the correct password.
+    dv.setUint32(10, fullEncryption ? 0 : fileCount, true);
+    // bytes 14..31 stay zero (reserved)
+    return buf;
+  }
+
+  function readHeader(bytes) {
+    if (bytes.length < HEADER_SIZE) throw new Error("파일이 너무 짧습니다 (헤더 손상)");
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (let i = 0; i < 4; i++) {
+      if (bytes[i] !== MAGIC[i]) throw new Error("올바른 JNO 파일이 아닙니다 (매직 넘버 불일치)");
+    }
+    const flags = dv.getUint8(6);
+    return {
+      versionMajor: dv.getUint8(4),
+      versionMinor: dv.getUint8(5),
+      flags,
+      encrypted: !!(flags & 0b00000001),
+      fullEncryption: !!(flags & 0b00000010),
+      compressionId: dv.getUint8(7),
+      security: dv.getUint8(8),
+      fileCount: dv.getUint32(10, true), // 0 / meaningless when fullEncryption is set
+    };
+  }
+
+  function writeChunk(type, data) {
+    const typeBytes = Util.enc.encode(type.padEnd(4).slice(0, 4));
+    const head = new Uint8Array(4 + 8);
+    head.set(typeBytes, 0);
+    new DataView(head.buffer).setBigUint64(4, BigInt(data.length), true);
+    const crc = new Uint8Array(4);
+    new DataView(crc.buffer).setUint32(0, CRC32.compute(data), true);
+    return Util.concatBytes([head, data, crc]);
+  }
+
+  // Reads one chunk starting at `offset`. Returns { type, data, next, raw }.
+  function readChunk(bytes, offset) {
+    if (offset + 12 > bytes.length) throw new Error("청크 헤더가 손상되었습니다");
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const type = Util.dec.decode(bytes.subarray(offset, offset + 4)).trim();
+    const length = Number(dv.getBigUint64(offset + 4, true));
+    const dataStart = offset + 12;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > bytes.length) throw new Error(`청크 "${type}" 데이터가 파일 범위를 벗어납니다`);
+    const data = bytes.subarray(dataStart, dataEnd);
+    const storedCrc = dv.getUint32(dataEnd, true);
+    const actualCrc = CRC32.compute(data);
+    if (storedCrc !== actualCrc) throw new Error(`청크 "${type}"의 CRC32 검증에 실패했습니다 (손상 가능성)`);
+    const raw = bytes.subarray(offset, dataEnd + 4);
+    return { type, data, next: dataEnd + 4, raw };
+  }
+
+  /**
+   * Build a full .jno file from an in-memory project state.
+   * project = { manifest, files:[{path,bytes,sha256,compressionId,mtime}], security, password,
+   *             aiInstructions:{instructions,priorityFiles,constraints}, signed }
+   */
+  async function build(project) {
+    const encrypted = project.security === 2 || project.security === 3;
+    let key = null, salt = null, iterations = project.kdfIterations || JnoCrypto.PBKDF2_ITERATIONS;
+    let ivMani, ivFtbl, ivFdat, ivAiin;
+
+    if (encrypted) {
+      salt = Util.randomBytes(16);
+      key = await JnoCrypto.deriveKey(project.password, salt, iterations);
+      ivMani = Util.randomBytes(12);
+      ivFtbl = Util.randomBytes(12);
+      ivFdat = Util.randomBytes(12);
+      ivAiin = Util.randomBytes(12);
+    }
+
+    // Build FDAT plaintext + file table entries with offsets
+    // (folder nodes are a Studio-side organizational concept only — v1 does not
+    //  persist empty folders, so only actual files are written here)
+    // When the project is password protected, files the owner explicitly marked
+    // "always public" are routed to a separate, never-encrypted PFTB/PDAT pair
+    // instead of the protected FTBL/FDAT — a transparent, owner-chosen exception,
+    // not a bypass of the password protection itself.
+    const allFiles = project.files.filter(f => f.type !== "folder");
+    const publicFiles = encrypted ? allFiles.filter(f => f.alwaysPublic) : [];
+    const onlyFiles = encrypted ? allFiles.filter(f => !f.alwaysPublic) : allFiles;
+
+    function buildTableAndData(list) {
+      let cur = 0;
+      const parts = [];
+      const entries = [];
+      for (const f of list) {
+        entries.push({ path: f.path, size: f.bytes.length, offset: cur, compression_id: f.compressionId ?? 0, sha256: f.sha256, mtime: f.mtime });
+        parts.push(f.bytes);
+        cur += f.bytes.length;
+      }
+      return { data: Util.concatBytes(parts), entries };
+    }
+
+    const protectedBuild = buildTableAndData(onlyFiles);
+    const ftblPlain = Util.enc.encode(JSON.stringify(protectedBuild.entries));
+    const fdatPlain = protectedBuild.data;
+    const maniPlain = Util.enc.encode(JSON.stringify(project.manifest));
+
+    let maniOut = maniPlain, ftblOut = ftblPlain, fdatOut = fdatPlain;
+    if (encrypted) {
+      maniOut = await JnoCrypto.encrypt(key, ivMani, maniPlain);
+      ftblOut = await JnoCrypto.encrypt(key, ivFtbl, ftblPlain);
+      fdatOut = await JnoCrypto.encrypt(key, ivFdat, fdatPlain);
+    }
+
+    const header = writeHeader({
+      security: project.security,
+      encrypted,
+      compressionId: 0,
+      fileCount: onlyFiles.length,
+      versionMinor: project.versionMinor ?? 0,
+    });
+
+    const parts = [header];
+    if (encrypted) {
+      const secuData = Util.concatBytes([
+        salt,
+        (() => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, iterations, true); return b; })(),
+        ivMani, ivFtbl, ivFdat, ivAiin,
+      ]);
+      parts.push(writeChunk("SECU", secuData));
+    }
+    parts.push(writeChunk("MANI", maniOut));
+    parts.push(writeChunk("FTBL", ftblOut));
+    parts.push(writeChunk("FDAT", fdatOut));
+
+    // PFTB / PDAT — always-plaintext file table + data for owner-marked public
+    // files, readable without a password even when the rest is protected.
+    if (publicFiles.length) {
+      const publicBuild = buildTableAndData(publicFiles);
+      parts.push(writeChunk("PFTB", Util.enc.encode(JSON.stringify(publicBuild.entries))));
+      parts.push(writeChunk("PDAT", publicBuild.data));
+    }
+
+    // AIIN — optional AI-agent instruction chunk (only written if there's content)
+    const ai = project.aiInstructions || {};
+    const hasAiContent = (ai.instructions && ai.instructions.trim()) ||
+      (ai.priorityFiles && ai.priorityFiles.length) || (ai.constraints && ai.constraints.length);
+    if (hasAiContent) {
+      const aiinPlain = Util.enc.encode(JSON.stringify({
+        instructions: ai.instructions || "",
+        priority_files: ai.priorityFiles || [],
+        constraints: ai.constraints || [],
+      }));
+      const aiinOut = encrypted ? await JnoCrypto.encrypt(key, ivAiin, aiinPlain) : aiinPlain;
+      parts.push(writeChunk("AIIN", aiinOut));
+    }
+
+    const bodyBeforeChecksum = Util.concatBytes(parts);
+    const digest = await JnoCrypto.sha256(bodyBeforeChecksum);
+    let out = Util.concatBytes([bodyBeforeChecksum, writeChunk("CKSM", digest)]);
+
+    // SIGN — optional ECDSA signature over the same digest CKSM protects
+    if (project.signed && SignKey.hasKeypair()) {
+      const { publicKeyJwk, signature } = await SignKey.signDigest(digest);
+      const signPayload = Util.enc.encode(JSON.stringify({ alg: "ECDSA-P256-SHA256", publicKeyJwk, signature }));
+      out = Util.concatBytes([out, writeChunk("SIGN", signPayload)]);
+    }
+
+    return out;
+  }
+
+  /**
+   * Parse a .jno file. `passwordProvider` is an async fn() => password string,
+   * called only if the file is encrypted.
+   */
+  async function parse(bytes, passwordProvider) {
+    const header = readHeader(bytes);
+    let offset = HEADER_SIZE;
+    const chunks = [];
+    let secuChunk = null, maniChunk = null, ftblChunk = null, fdatChunk = null, cksmChunk = null, aiinChunk = null, signChunk = null;
+
+    while (offset < bytes.length) {
+      const chunk = readChunk(bytes, offset);
+      chunks.push(chunk);
+      if (chunk.type === "SECU") secuChunk = chunk;
+      else if (chunk.type === "MANI") maniChunk = chunk;
+      else if (chunk.type === "FTBL") ftblChunk = chunk;
+      else if (chunk.type === "FDAT") fdatChunk = chunk;
+      else if (chunk.type === "AIIN") aiinChunk = chunk;
+      else if (chunk.type === "CKSM") cksmChunk = chunk;
+      else if (chunk.type === "SIGN") signChunk = chunk;
+      offset = chunk.next;
+    }
+    if (!maniChunk || !ftblChunk || !fdatChunk) throw new Error("필수 청크(MANI/FTBL/FDAT)가 누락되었습니다");
+
+    // Verify whole-container checksum (covers everything up to, but not including, CKSM)
+    let digest = null;
+    if (cksmChunk) {
+      const preChecksumBytes = bytes.subarray(0, cksmChunk.raw.byteOffset - bytes.byteOffset);
+      digest = await JnoCrypto.sha256(preChecksumBytes);
+      const stored = Util.toHex(cksmChunk.data);
+      const actual = Util.toHex(digest);
+      if (stored !== actual) throw new Error("전체 컨테이너 체크섬(CKSM)이 일치하지 않습니다 — 파일이 손상되었을 수 있습니다");
+    }
+
+    // Verify an optional digital signature (proves the same key holder
+    // saved this file and that it matches the CKSM digest — not a
+    // real-world identity check).
+    let signature = null;
+    if (signChunk && digest) {
+      try {
+        const sig = JSON.parse(Util.dec.decode(signChunk.data));
+        const valid = await SignKey.verifyDigest(sig.publicKeyJwk, sig.signature, digest);
+        signature = { present: true, valid, alg: sig.alg, fingerprint: await SignKey.fingerprint(sig.publicKeyJwk) };
+      } catch (e) {
+        signature = { present: true, valid: false, alg: null, fingerprint: null };
+      }
+    }
+
+    let maniPlain, ftblPlain, fdatPlain, aiinPlain = null;
+
+    if (header.encrypted) {
+      if (!secuChunk) throw new Error("암호화 플래그가 설정되었지만 SECU 청크가 없습니다");
+      const dv = new DataView(secuChunk.data.buffer, secuChunk.data.byteOffset, secuChunk.data.byteLength);
+      const salt = secuChunk.data.subarray(0, 16);
+      const iterations = dv.getUint32(16, true);
+      const ivMani = secuChunk.data.subarray(20, 32);
+      const ivFtbl = secuChunk.data.subarray(32, 44);
+      const ivFdat = secuChunk.data.subarray(44, 56);
+      // ivAiin was added when the AIIN chunk was introduced; older SECU
+      // chunks (56 bytes) simply won't have one.
+      const ivAiin = secuChunk.data.length >= 68 ? secuChunk.data.subarray(56, 68) : null;
+
+      const password = await passwordProvider();
+      const key = await JnoCrypto.deriveKey(password, salt, iterations);
+      try {
+        maniPlain = await JnoCrypto.decrypt(key, ivMani, maniChunk.data);
+        ftblPlain = await JnoCrypto.decrypt(key, ivFtbl, ftblChunk.data);
+        fdatPlain = await JnoCrypto.decrypt(key, ivFdat, fdatChunk.data);
+        if (aiinChunk && ivAiin) aiinPlain = await JnoCrypto.decrypt(key, ivAiin, aiinChunk.data);
+      } catch (e) {
+        const err = new Error("WRONG_PASSWORD");
+        err.code = "WRONG_PASSWORD";
+        throw err;
+      }
+    } else {
+      maniPlain = maniChunk.data;
+      ftblPlain = ftblChunk.data;
+      fdatPlain = fdatChunk.data;
+      if (aiinChunk) aiinPlain = aiinChunk.data;
+    }
+
+    const manifest = JSON.parse(Util.dec.decode(maniPlain));
+    const ftblEntries = JSON.parse(Util.dec.decode(ftblPlain));
+    const files = [];
+    for (const entry of ftblEntries) {
+      const fileBytes = fdatPlain.subarray(entry.offset, entry.offset + entry.size);
+      const actualHash = Util.toHex(await JnoCrypto.sha256(fileBytes));
+      files.push({
+        path: entry.path,
+        bytes: fileBytes,
+        size: entry.size,
+        compressionId: entry.compression_id ?? 0,
+        sha256: entry.sha256,
+        sha256Verified: actualHash === entry.sha256,
+        mtime: entry.mtime,
+      });
+    }
+
+    let aiInstructions = { instructions: "", priorityFiles: [], constraints: [] };
+    if (aiinPlain) {
+      try {
+        const parsed = JSON.parse(Util.dec.decode(aiinPlain));
+        aiInstructions = {
+          instructions: parsed.instructions || "",
+          priorityFiles: parsed.priority_files || [],
+          constraints: parsed.constraints || [],
+        };
+      } catch { /* malformed AIIN is non-fatal — the rest of the project still opens */ }
+    }
+
+    return {
+      header,
+      manifest,
+      files,
+      aiInstructions,
+      signature,
+      security: header.security,
+      chunkSummary: chunks.map(c => ({ type: c.type, size: c.raw.length })),
+      totalSize: bytes.length,
+    };
+  }
+
+  return { HEADER_SIZE, MAGIC, SPEC_VERSION, writeHeader, readHeader, writeChunk, readChunk, build, parse };
+})();
+
+/* ======================================================================
+   MODULE: Logger — activity/error log shown in the Log panel
+   ====================================================================== */
+const Logger = (() => {
+  let entries = [];
+  const listeners = [];
+  function log(level, message) {
+    entries.unshift({ id: Date.now() + Math.random(), time: new Date(), level, message: String(message) });
+    if (entries.length > 300) entries.length = 300;
+    notify();
+  }
+  function subscribe(fn) { listeners.push(fn); }
+  function notify() { for (const fn of listeners) fn(entries); }
+  function clear() { entries = []; notify(); }
+  function all() { return entries; }
+  return { log, info: m => log("info", m), ok: m => log("ok", m), error: m => log("error", m), subscribe, clear, all };
+})();
+
+/* ======================================================================
+   MODULE: RecentProjects — localStorage-backed recent-file list.
+   Small projects (<=2MB) also cache their built bytes so they can be
+   reopened instantly without re-picking the file from disk.
+   ====================================================================== */
+const RecentProjects = (() => {
+  const KEY = "jno_studio_recents_v1";
+  const MAX = 8;
+  const MAX_CACHE_BYTES = 2 * 1024 * 1024;
+  function list() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+  }
+  function persist(items) { localStorage.setItem(KEY, JSON.stringify(items)); }
+  function add({ filename, name, version, author, security, bytes }) {
+    let items = list().filter(it => it.filename !== filename);
+    const entry = {
+      filename, name, version, author, security,
+      size: bytes.length,
+      savedAt: Util.nowISO(),
+      dataB64: bytes.length <= MAX_CACHE_BYTES ? Util.bytesToBase64(bytes) : null,
+    };
+    items.unshift(entry);
+    items = items.slice(0, MAX);
+    try { persist(items); } catch (e) { Logger.error("최근 프로젝트 목록 저장 실패: " + e.message); }
+    return entry;
+  }
+  function remove(filename) { persist(list().filter(it => it.filename !== filename)); }
+  function clear() { localStorage.removeItem(KEY); }
+  function getBytes(filename) {
+    const item = list().find(it => it.filename === filename);
+    if (!item || !item.dataB64) return null;
+    return Util.base64ToBytes(item.dataB64);
+  }
+  return { list, add, remove, clear, getBytes };
+})();
+
+/* ======================================================================
+   MODULE: Settings — persisted app preferences
+   ====================================================================== */
+const Settings = (() => {
+  const KEY = "jno_studio_settings_v1";
+  const DEFAULTS = { defaultAuthor: "User", autosaveEnabled: true, autosaveInterval: 15 };
+  function get() {
+    try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
+    catch { return Object.assign({}, DEFAULTS); }
+  }
+  function set(patch) {
+    const merged = Object.assign({}, get(), patch);
+    localStorage.setItem(KEY, JSON.stringify(merged));
+    return merged;
+  }
+  return { get, set };
+})();
+
+/* ======================================================================
+   MODULE: AutoSave — periodic localStorage snapshot of the open project
+   (separate from the explicit "Save .jno" download). Passwords are never
+   written to storage, so encrypted projects require re-entering the
+   password before their next .jno save after a restore.
+   ====================================================================== */
+const AutoSave = (() => {
+  const KEY = "jno_studio_autosave_v1";
+  let timer = null;
+  const statusListeners = [];
+  function subscribeStatus(fn) { statusListeners.push(fn); }
+  function emitStatus(status, time) { for (const fn of statusListeners) fn(status, time); }
+  function hasSnapshot() { return !!localStorage.getItem(KEY); }
+  function clear() { localStorage.removeItem(KEY); emitStatus("off", null); }
+
+  function writeSnapshot(project) {
+    if (!project) return;
+    const files = project.files.map(n => n.type === "folder"
+      ? { type: "folder", path: n.path }
+      : { type: "file", path: n.path, bytes: Util.bytesToBase64(n.bytes), sha256: n.sha256, compressionId: n.compressionId, mtime: n.mtime });
+    const snapshot = {
+      manifest: project.manifest, files, security: project.security,
+      compressionId: project.compressionId, versionMinor: project.versionMinor,
+      aiInstructions: project.aiInstructions, signed: project.signed,
+      filename: project.filename, savedAt: Util.nowISO(),
+    };
+    try {
+      localStorage.setItem(KEY, JSON.stringify(snapshot));
+      emitStatus("saved", snapshot.savedAt);
+    } catch (e) {
+      Logger.error("자동 저장 실패 (저장 공간 부족일 수 있음): " + e.message);
+      emitStatus("error", null);
+    }
+  }
+  function schedule(project, enabled, delayMs = 900) {
+    if (timer) clearTimeout(timer);
+    if (!enabled) { emitStatus("off", null); return; }
+    if (!project || !project.dirty) return;
+    emitStatus("pending", null);
+    timer = setTimeout(() => writeSnapshot(project), delayMs);
+  }
+  function restore() {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    try {
+      const snap = JSON.parse(raw);
+      const files = snap.files.map(n => n.type === "folder"
+        ? { type: "folder", path: n.path }
+        : { type: "file", path: n.path, bytes: Util.base64ToBytes(n.bytes), sha256: n.sha256, compressionId: n.compressionId, mtime: n.mtime });
+      return {
+        manifest: snap.manifest, files, security: snap.security,
+        compressionId: snap.compressionId, versionMinor: snap.versionMinor, filename: snap.filename,
+        aiInstructions: snap.aiInstructions, signed: snap.signed,
+      };
+    } catch (e) {
+      Logger.error("자동 저장 데이터를 복원하지 못했습니다: " + e.message);
+      return null;
+    }
+  }
+  return { hasSnapshot, clear, schedule, restore, subscribeStatus };
+})();
+
+/* ======================================================================
+   MODULE: ContextMenu — generic right-click menu used by the Explorer
+   ====================================================================== */
+const ContextMenu = (() => {
+  let el = null;
+  function ensure() { if (!el) el = document.getElementById("ctxMenu"); return el; }
+  function hide() { const m = ensure(); m.classList.remove("show"); m.innerHTML = ""; }
+  function show(x, y, items) {
+    const m = ensure();
+    m.innerHTML = "";
+    for (const item of items) {
+      if (item.separator) { const sep = document.createElement("div"); sep.className = "ctxmenu-sep"; m.appendChild(sep); continue; }
+      const row = document.createElement("div");
+      row.className = "ctxmenu-item" + (item.danger ? " danger" : "");
+      row.textContent = item.label;
+      row.onclick = (e) => { e.stopPropagation(); hide(); item.action(); };
+      m.appendChild(row);
+    }
+    m.classList.add("show");
+    const vw = window.innerWidth, vh = window.innerHeight;
+    m.style.left = Math.min(x, vw - 200) + "px";
+    m.style.top = Math.min(y, vh - (items.length * 34 + 24)) + "px";
+  }
+  document.addEventListener("click", hide);
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+  window.addEventListener("blur", hide);
+  window.addEventListener("resize", hide);
+  return { show, hide };
+})();
+
+/* ======================================================================
+   MODULE: State — single source of truth for the currently open project
+   ====================================================================== */
+const State = (() => {
+  let project = null; // { manifest, files, security, password, filename, dirty }
+  const listeners = [];
+
+  function subscribe(fn) { listeners.push(fn); }
+  function notify() { for (const fn of listeners) fn(project); }
+
+  // ---- path helpers ------------------------------------------------
+  function basename(p) { const parts = p.split("/"); return parts[parts.length - 1]; }
+  function dirname(p) { const parts = p.split("/"); parts.pop(); return parts.join("/"); }
+  function join(dir, name) { return dir ? dir + "/" + name : name; }
+  function isDescendant(childPath, folderPath) { return childPath === folderPath || childPath.startsWith(folderPath + "/"); }
+
+  // project.files holds BOTH files and folders as flat nodes:
+  //   { type:"file",   path, bytes, sha256, compressionId, mtime }
+  //   { type:"folder", path }
+  // `path` always uses "/" as separator, no leading/trailing slash.
+
+  function reset(manifest) {
+    project = {
+      manifest: manifest || { name: "my-project", version: "1.0.0", author: "User", language: "Python",
+        entry: "", entries: [], description: "", jno_spec_version: "1.0", created_at: Util.nowISO() },
+      files: [],
+      security: 1,
+      password: null,
+      compressionId: 0,
+      filename: (manifest && manifest.name ? manifest.name : "project") + ".jno",
+      versionMinor: 0,
+      aiInstructions: { instructions: "", priorityFiles: [], constraints: [] },
+      signed: false,
+      signatureInfo: null,
+      locked: false,
+      dirty: true,
+      lastSavedAt: null,
+    };
+    notify();
+  }
+  async function loadDemo() {
+    reset({
+      name: "jno-demo", version: "1.0.0", author: "JNO Studio", language: "Python",
+      entry: "main.py", entries: ["main.py", "README.md"],
+      description: "JNO Studio 기능을 둘러보기 위한 예제 프로젝트입니다. 자유롭게 편집해보세요 (저장하지 않는 한 실제 파일은 만들어지지 않습니다).",
+      jno_spec_version: "1.0", created_at: Util.nowISO(),
+    });
+    const demoFiles = [
+      { path: "main.py", text: "def main():\n    print(\"Hello from a JNO demo project!\")\n\nif __name__ == \"__main__\":\n    main()\n" },
+      { path: "README.md", text: "# jno-demo\n\n이 프로젝트는 JNO Studio를 둘러보기 위한 예제입니다.\n\n- Explorer에서 파일을 추가/삭제/이름변경 해보세요.\n- Security 패널에서 비밀번호 보호를 켜보세요.\n- Structure 패널에서 내부 구조를 확인해보세요.\n" },
+      { path: "src/utils.py", text: "def greet(name):\n    return f\"Hello, {name}!\"\n" },
+      { path: "data/sample.json", text: JSON.stringify({ example: true, values: [1, 2, 3] }, null, 2) },
+    ];
+    for (const f of demoFiles) {
+      const bytes = Util.enc.encode(f.text);
+      const sha256 = Util.toHex(await JnoCrypto.sha256(bytes));
+      project.files.push({ type: "file", path: f.path, bytes, sha256, compressionId: 0, mtime: Util.nowISO(), alwaysPublic: false });
+    }
+    project.dirty = false;
+    project.filename = "jno-demo.jno";
+    notify();
+  }
+  function loadParsed(parsed, filename) {
+    // The binary format only stores files (folders are a Studio-side concept),
+    // so implied folders are reconstructed from file paths for display purposes.
+    const fileNodes = parsed.files.map(f => ({ type: "file", path: f.path, bytes: f.bytes, sha256: f.sha256, compressionId: f.compressionId, mtime: f.mtime }));
+    const folderPaths = new Set();
+    for (const f of fileNodes) {
+      let dir = dirname(f.path);
+      while (dir) { folderPaths.add(dir); dir = dirname(dir); }
+    }
+    const folderNodes = Array.from(folderPaths).map(path => ({ type: "folder", path }));
+    if (!Array.isArray(parsed.manifest.entries)) parsed.manifest.entries = parsed.manifest.entry ? [parsed.manifest.entry] : [];
+    project = {
+      manifest: parsed.manifest,
+      files: [...folderNodes, ...fileNodes],
+      security: parsed.security,
+      password: null,
+      compressionId: 0,
+      filename,
+      versionMinor: parsed.header.versionMinor ?? 0,
+      aiInstructions: parsed.aiInstructions || { instructions: "", priorityFiles: [], constraints: [] },
+      signed: !!(parsed.signature && parsed.signature.present),
+      signatureInfo: parsed.signature,
+      dirty: false,
+      lastSavedAt: Util.nowISO(),
+      _lastParsed: parsed,
+    };
+    notify();
+  }
+  function loadSnapshot(snapshot) {
+    project = {
+      manifest: snapshot.manifest,
+      files: snapshot.files,
+      security: snapshot.security,
+      password: null,
+      compressionId: snapshot.compressionId ?? 0,
+      versionMinor: snapshot.versionMinor ?? 0,
+      filename: snapshot.filename || "project.jno",
+      aiInstructions: snapshot.aiInstructions || { instructions: "", priorityFiles: [], constraints: [] },
+      signed: !!snapshot.signed,
+      signatureInfo: null,
+      dirty: true,
+      lastSavedAt: null,
+    };
+    notify();
+  }
+  function get() { return project; }
+  function fileNodes() { return project ? project.files.filter(n => n.type !== "folder") : []; }
+  function markDirty() { if (project) { project.dirty = true; notify(); } }
+
+  function uniquePath(dir, name) {
+    const existing = new Set(project.files.map(f => f.path));
+    let candidate = join(dir, name), i = 1;
+    const dot = name.lastIndexOf(".");
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : "";
+    while (existing.has(candidate)) { candidate = join(dir, `${base} (${i++})${ext}`); }
+    return candidate;
+  }
+
+  async function addFiles(fileList, targetFolder = "") {
+    if (!project) return;
+    for (const f of fileList) {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      const hash = Util.toHex(await JnoCrypto.sha256(buf));
+      const path = uniquePath(targetFolder, f.name);
+      project.files.push({ type: "file", path, bytes: buf, sha256: hash, compressionId: 0, mtime: new Date(f.lastModified || Date.now()).toISOString() });
+    }
+    if (!project.manifest.entry) { const first = fileNodes()[0]; if (first) project.manifest.entry = first.path; }
+    project.dirty = true;
+    notify();
+  }
+  async function addEmptyFile(name, targetFolder = "") {
+    if (!project) return null;
+    const path = uniquePath(targetFolder, name);
+    const bytes = new Uint8Array(0);
+    const sha256 = Util.toHex(await JnoCrypto.sha256(bytes));
+    project.files.push({ type: "file", path, bytes, sha256, compressionId: 0, mtime: Util.nowISO() });
+    if (!project.manifest.entry) project.manifest.entry = path;
+    project.dirty = true;
+    notify();
+    return path;
+  }
+  function addFolder(name, targetFolder = "") {
+    if (!project) return null;
+    const path = uniquePath(targetFolder, name);
+    project.files.push({ type: "folder", path });
+    project.dirty = true;
+    notify();
+    return path;
+  }
+  function removeFile(path) {
+    // removes the node at `path`; if it's a folder, also removes every descendant
+    if (!project) return;
+    const target = project.files.find(n => n.path === path);
+    if (!target) return;
+    if (target.type === "folder") {
+      project.files = project.files.filter(n => !isDescendant(n.path, path));
+    } else {
+      project.files = project.files.filter(n => n.path !== path);
+    }
+    if (project.manifest.entry === path) project.manifest.entry = "";
+    project.dirty = true;
+    notify();
+  }
+  function renameNode(path, newName) {
+    if (!project || !newName) return;
+    const target = project.files.find(n => n.path === path);
+    if (!target) return;
+    const dir = dirname(path);
+    const newPath = uniquePath(dir, newName);
+    if (target.type === "folder") {
+      for (const n of project.files) {
+        if (isDescendant(n.path, path)) n.path = newPath + n.path.slice(path.length);
+      }
+    } else {
+      target.path = newPath;
+      if (project.manifest.entry === path) project.manifest.entry = newPath;
+    }
+    project.dirty = true;
+    notify();
+  }
+  function moveNode(path, destFolder) {
+    if (!project || path === destFolder) return;
+    if (isDescendant(destFolder, path)) return; // can't move a folder into its own descendant
+    const target = project.files.find(n => n.path === path);
+    if (!target) return;
+    const name = basename(path);
+    const newPath = uniquePath(destFolder, name);
+    if (target.type === "folder") {
+      for (const n of project.files) {
+        if (isDescendant(n.path, path)) n.path = newPath + n.path.slice(path.length);
+      }
+    } else {
+      target.path = newPath;
+      if (project.manifest.entry === path) project.manifest.entry = newPath;
+    }
+    project.dirty = true;
+    notify();
+  }
+  function updateManifest(patch) {
+    if (!project) return;
+    Object.assign(project.manifest, patch);
+    project.dirty = true;
+    notify();
+  }
+  function setSecurity(sec, password) {
+    if (!project) return;
+    project.security = sec;
+    project.password = (sec === 2 || sec === 3) ? password : null;
+    project.dirty = true;
+    notify();
+  }
+  function setFilename(name) {
+    if (!project) return;
+    project.filename = name;
+    notify();
+  }
+  function setVersionMinor(n) {
+    if (!project) return;
+    const v = Math.max(0, Math.min(255, Number(n) || 0));
+    project.versionMinor = v;
+    project.dirty = true;
+    notify();
+  }
+  function setEntries(primary, additional) {
+    if (!project) return;
+    const list = Array.from(new Set([primary, ...additional].filter(Boolean)));
+    project.manifest.entry = primary || "";
+    project.manifest.entries = list;
+    project.dirty = true;
+    notify();
+  }
+  function setAiInstructions(patch) {
+    if (!project) return;
+    Object.assign(project.aiInstructions, patch);
+    project.dirty = true;
+    notify();
+  }
+  function setSigned(flag) {
+    if (!project) return;
+    project.signed = !!flag;
+    project.dirty = true;
+    notify();
+  }
+  function markSaved() {
+    if (!project) return;
+    project.dirty = false;
+    project.lastSavedAt = Util.nowISO();
+    notify();
+  }
+  return {
+    subscribe, reset, loadParsed, loadSnapshot, get, fileNodes, markDirty,
+    addFiles, addEmptyFile, addFolder, removeFile, renameNode, moveNode,
+    updateManifest, setSecurity, setFilename, markSaved, setVersionMinor,
+    setEntries, setAiInstructions, setSigned,
+    path: { basename, dirname, join },
+  };
+})();
+
+/* ======================================================================
+   MODULE: UI — rendering & event wiring
+   ====================================================================== */
+const UI = (() => {
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  let activePanel = "empty";
+  let openTabs = ["empty"]; // panel ids currently open as tabs
+  let previewFile = null;
+  let previewShowAll = false;
+  let promptPasswordRef = () => Promise.reject(new Error("비밀번호 입력 창을 사용할 수 없습니다"));
+  function setPasswordPrompt(fn) { promptPasswordRef = fn; }
+
+  const PANEL_META = {
+    empty:     { label: "환영", icon: "🏠", closable: false },
+    manifest:  { label: "Manifest", icon: "📋", closable: true },
+    header:    { label: "Header", icon: "🔖", closable: true },
+    filetable: { label: "File Table", icon: "📊", closable: true },
+    security:  { label: "Security", icon: "🔒", closable: true },
+    structure: { label: "Structure", icon: "🧩", closable: true },
+    recent:    { label: "Recent", icon: '<span class="icon-clock"></span>', closable: true },
+    stats:     { label: "Statistics", icon: '<span class="icon-chart"><span></span><span></span><span></span></span>', closable: true },
+    log:       { label: "Log", icon: '<span class="icon-log"><span></span><span></span><span></span></span>', closable: true },
+    manual:    { label: "매뉴얼", icon: '<span class="icon-book"></span>', closable: true },
+    preview:   { label: "미리보기", icon: "📄", closable: true },
+  };
+
+  function toast(msg, kind) {
+    const host = $("#toasthost");
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    host.appendChild(el);
+    setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .2s"; setTimeout(() => el.remove(), 200); }, 2600);
+    Logger.log(kind === "err" ? "error" : (kind === "ok" ? "ok" : "info"), msg);
+  }
+
+  function openPanel(id) {
+    if (!openTabs.includes(id)) openTabs.push(id);
+    activePanel = id;
+    render();
+  }
+  function closeTab(id, evt) {
+    if (evt) evt.stopPropagation();
+    openTabs = openTabs.filter(t => t !== id);
+    if (activePanel === id) activePanel = openTabs[openTabs.length - 1] || "empty";
+    if (!openTabs.includes("empty") && openTabs.length === 0) openTabs = ["empty"];
+    render();
+  }
+
+  function renderTabs() {
+    const bar = $("#tabbar");
+    bar.innerHTML = "";
+    for (const id of openTabs) {
+      const meta = PANEL_META[id];
+      const tab = document.createElement("div");
+      tab.className = "tab" + (id === activePanel ? " active" : "");
+      tab.innerHTML = `<span class="ticon">${meta.icon}</span><span>${id === "preview" && previewFile ? previewFile.path : meta.label}</span>`;
+      if (meta.closable) {
+        const x = document.createElement("span");
+        x.className = "tclose"; x.textContent = "×";
+        x.onclick = (e) => closeTab(id, e);
+        tab.appendChild(x);
+      }
+      tab.onclick = () => { activePanel = id; render(); };
+      bar.appendChild(tab);
+    }
+  }
+
+  function renderActivityBar() {
+    $$(".abtn").forEach(b => b.classList.toggle("active", b.dataset.panel === activePanel));
+  }
+
+  const collapsedFolders = new Set();
+  let renamingPath = null;
+  let searchQuery = "";
+
+  function renderExplorer() {
+    const tree = $("#filetree");
+    const p = State.get();
+    tree.innerHTML = "";
+
+    const dz = document.createElement("div");
+    dz.className = "dropzone";
+    dz.textContent = "파일을 드래그하거나 클릭해서 업로드";
+    dz.onclick = () => $("#fileAddInput").click();
+    dz.ondragover = (e) => { if (isFileDrag(e)) { e.preventDefault(); dz.classList.add("dragover"); } };
+    dz.ondragleave = () => dz.classList.remove("dragover");
+    dz.ondrop = async (e) => {
+      e.preventDefault(); dz.classList.remove("dragover");
+      if (!p || !isFileDrag(e)) return;
+      await State.addFiles(e.dataTransfer.files, "");
+      toast(`${e.dataTransfer.files.length}개 파일 추가됨`, "ok");
+    };
+    tree.appendChild(dz);
+
+    // root drop target — dropping a tree node here moves it to the top level
+    tree.ondragover = (e) => { if (draggingPath) { e.preventDefault(); tree.classList.add("root-dragover"); } };
+    tree.ondragleave = (e) => { if (e.target === tree) tree.classList.remove("root-dragover"); };
+    tree.ondrop = (e) => {
+      tree.classList.remove("root-dragover");
+      if (draggingPath && isFileDrag(e) === false) { e.preventDefault(); State.moveNode(draggingPath, ""); }
+    };
+    tree.oncontextmenu = (e) => {
+      if (e.target !== tree && e.target !== dz) return; // only the empty background, not a row
+      e.preventDefault();
+      if (!p) return;
+      showTreeContextMenu(e.clientX, e.clientY, "");
+    };
+
+    if (!p) {
+      const empty = document.createElement("div");
+      empty.className = "sb-empty";
+      empty.textContent = "프로젝트를 새로 만들거나 열면 파일 목록이 여기에 표시됩니다.";
+      tree.appendChild(empty);
+      return;
+    }
+    if (p.files.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "sb-empty";
+      empty.textContent = "아직 추가된 파일/폴더가 없습니다. 상단의 📄⁺ / 📁⁺ 버튼으로 만들어보세요.";
+      tree.appendChild(empty);
+      return;
+    }
+
+    // when searching, compute which nodes (+ their ancestor folders) stay visible
+    let visiblePaths = null;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matches = p.files.filter(n => State.path.basename(n.path).toLowerCase().includes(q));
+      if (matches.length === 0) {
+        const nomatch = document.createElement("div");
+        nomatch.className = "search-nomatch";
+        nomatch.textContent = `"${searchQuery}"와(과) 일치하는 파일/폴더가 없습니다`;
+        tree.appendChild(nomatch);
+        return;
+      }
+      visiblePaths = new Set();
+      for (const m of matches) {
+        visiblePaths.add(m.path);
+        let dir = State.path.dirname(m.path);
+        while (dir) { visiblePaths.add(dir); dir = State.path.dirname(dir); }
+      }
+    }
+
+    const byDir = new Map(); // dirPath -> [nodes] (direct children only)
+    for (const n of p.files) {
+      if (visiblePaths && !visiblePaths.has(n.path)) continue;
+      const dir = State.path.dirname(n.path);
+      if (!byDir.has(dir)) byDir.set(dir, []);
+      byDir.get(dir).push(n);
+    }
+    const sortChildren = (arr) => arr.sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return State.path.basename(a.path).localeCompare(State.path.basename(b.path));
+    });
+
+    function renderLevel(dir, depth) {
+      const children = sortChildren(byDir.get(dir) || []);
+      for (const node of children) {
+        tree.appendChild(renderRow(node, depth));
+        const forceExpand = !!(visiblePaths && node.type === "folder");
+        if (node.type === "folder" && (forceExpand || !collapsedFolders.has(node.path))) {
+          renderLevel(node.path, depth + 1);
+        }
+      }
+    }
+    renderLevel("", 0);
+  }
+
+  let draggingPath = null;
+  function isFileDrag(e) {
+    // true if this drag carries OS files (upload), false if it's an internal tree-node drag
+    return e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes("Files") && !draggingPath;
+  }
+
+  function renderRow(node, depth) {
+    const isFolder = node.type === "folder";
+    const row = document.createElement("div");
+    const isSelected = !isFolder && previewFile && previewFile.path === node.path && activePanel === "preview";
+    row.className = "frow" + (isFolder ? " folder" : "") + (isSelected ? " selected" : "");
+    row.style.paddingLeft = (14 + depth * 16) + "px";
+    row.draggable = renamingPath !== node.path;
+
+    const chevron = isFolder
+      ? `<span class="chevron${collapsedFolders.has(node.path) ? " collapsed" : ""}">▾</span>`
+      : `<span class="chevron spacer">▾</span>`;
+    const icon = isFolder ? "📁" : iconFor(node.path);
+    const sizeLabel = isFolder ? "" : `<span class="fsize">${Util.fmtBytes(node.bytes.length)}</span>`;
+    const displayName = highlightMatch(escapeHtml(State.path.basename(node.path)), searchQuery);
+
+    if (renamingPath === node.path) {
+      row.innerHTML = `${chevron}<span class="ficon">${icon}</span>
+        <input class="fname-input" id="renameInput" value="${escapeHtml(State.path.basename(node.path))}">`;
+    } else {
+      row.innerHTML = `${chevron}<span class="ficon">${icon}</span><span class="fname">${displayName}</span>
+        ${sizeLabel}
+        <span class="frowactions">
+          <span class="fact fren" title="이름 변경">✎</span>
+          <span class="fact fdel" title="삭제">✕</span>
+        </span>`;
+    }
+
+    row.onclick = (e) => {
+      if (renamingPath === node.path) return;
+      if (e.target.classList.contains("fdel")) {
+        if (isFolder && (p_childCount(node.path) > 0)) {
+          if (!confirm(`"${State.path.basename(node.path)}" 폴더와 그 안의 모든 파일을 삭제할까요?`)) return;
+        }
+        State.removeFile(node.path);
+        toast(`"${State.path.basename(node.path)}" 삭제됨`);
+        return;
+      }
+      if (e.target.classList.contains("fren")) {
+        renamingPath = node.path;
+        render();
+        setTimeout(() => { const el = $("#renameInput"); if (el) { el.focus(); el.select(); } }, 0);
+        return;
+      }
+      if (e.target.closest(".chevron") && isFolder) {
+        if (collapsedFolders.has(node.path)) collapsedFolders.delete(node.path); else collapsedFolders.add(node.path);
+        render();
+        return;
+      }
+      if (isFolder) {
+        if (collapsedFolders.has(node.path)) collapsedFolders.delete(node.path); else collapsedFolders.add(node.path);
+        render();
+      } else {
+        previewFile = node;
+        previewShowAll = false;
+        openPanel("preview");
+      }
+    };
+
+    row.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showTreeContextMenu(e.clientX, e.clientY, isFolder ? node.path : State.path.dirname(node.path), node);
+    };
+
+    if (renamingPath === node.path) {
+      setTimeout(() => {
+        const input = $("#renameInput");
+        if (!input) return;
+        const commit = () => { const v = input.value.trim(); renamingPath = null; if (v) State.renameNode(node.path, v); else render(); };
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { renamingPath = null; render(); }
+        });
+        input.addEventListener("blur", commit);
+      }, 0);
+    }
+
+    // drag to move
+    row.addEventListener("dragstart", (e) => {
+      draggingPath = node.path;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => { draggingPath = null; row.classList.remove("dragging"); });
+    if (isFolder) {
+      row.addEventListener("dragover", (e) => {
+        if (draggingPath && draggingPath !== node.path) { e.preventDefault(); row.classList.add("dragover-target"); }
+        else if (isFileDrag(e)) { e.preventDefault(); row.classList.add("filedrop-active"); }
+      });
+      row.addEventListener("dragleave", () => row.classList.remove("dragover-target", "filedrop-active"));
+      row.addEventListener("drop", async (e) => {
+        row.classList.remove("dragover-target", "filedrop-active");
+        if (draggingPath && draggingPath !== node.path) {
+          e.preventDefault();
+          State.moveNode(draggingPath, node.path);
+        } else if (isFileDrag(e)) {
+          e.preventDefault();
+          await State.addFiles(e.dataTransfer.files, node.path);
+          toast(`"${State.path.basename(node.path)}" 폴더에 ${e.dataTransfer.files.length}개 파일 추가됨`, "ok");
+        }
+      });
+    }
+    return row;
+  }
+
+  function highlightMatch(escapedName, query) {
+    if (!query) return escapedName;
+    const idx = escapedName.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return escapedName;
+    return escapedName.slice(0, idx) + "<mark>" + escapedName.slice(idx, idx + query.length) + "</mark>" + escapedName.slice(idx + query.length);
+  }
+
+  function showTreeContextMenu(x, y, folderPath, node) {
+    const items = [];
+    items.push({ label: "새 파일", action: async () => {
+      const name = prompt("새 파일 이름", "untitled.txt");
+      if (!name || !name.trim()) return;
+      const path = await State.addEmptyFile(name.trim(), folderPath);
+      toast(`"${path}" 생성됨`, "ok");
+    }});
+    items.push({ label: "새 폴더", action: () => {
+      const name = prompt("새 폴더 이름", "new-folder");
+      if (!name || !name.trim()) return;
+      const path = State.addFolder(name.trim(), folderPath);
+      toast(`"${path}" 폴더 생성됨`, "ok");
+    }});
+    if (node) {
+      items.push({ separator: true });
+      if (!node.type || node.type === "file") {
+        items.push({ label: "미리보기 열기", action: () => { previewFile = node; previewShowAll = false; openPanel("preview"); } });
+      }
+      items.push({ label: "경로 복사", action: () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(node.path).then(
+          () => toast("경로가 복사되었습니다", "ok"),
+          () => toast("경로 복사에 실패했습니다", "err")
+        );
+      }});
+      items.push({ label: "이름 변경", action: () => { renamingPath = node.path; render(); setTimeout(() => { const el = $("#renameInput"); if (el) { el.focus(); el.select(); } }, 0); } });
+      items.push({ separator: true });
+      items.push({ label: "삭제", danger: true, action: () => {
+        if (node.type === "folder" && p_childCount(node.path) > 0) {
+          if (!confirm(`"${State.path.basename(node.path)}" 폴더와 그 안의 모든 파일을 삭제할까요?`)) return;
+        }
+        State.removeFile(node.path);
+        toast(`"${State.path.basename(node.path)}" 삭제됨`);
+      }});
+    }
+    ContextMenu.show(x, y, items);
+  }
+
+  function p_childCount(folderPath) {
+    const p = State.get();
+    if (!p) return 0;
+    return p.files.filter(n => n.path !== folderPath && n.path.startsWith(folderPath + "/")).length;
+  }
+
+  function iconFor(path) {
+    const ext = path.split(".").pop().toLowerCase();
+    const map = {
+      py:"🐍", html:"🌐", css:"🎨", js:"📜", c:"🔧", cpp:"🔧", cs:"🔷", json:"🧾", xml:"🧾", csv:"📑", yaml:"📑", yml:"📑", md:"📝",
+      mp3:'<span class="icon-audio-file"></span>', wav:'<span class="icon-audio-file"></span>', ogg:'<span class="icon-audio-file"></span>',
+      png:'<span class="icon-image-file"></span>', jpg:'<span class="icon-image-file"></span>', jpeg:'<span class="icon-image-file"></span>', svg:'<span class="icon-image-file"></span>',
+      onnx:'<span class="icon-model-file"></span>',
+    };
+    return map[ext] || "📄";
+  }
+  function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+  function renderManifestPanel() {
+    const p = State.get();
+    if (!p) return;
+    $("#mf-name").value = p.manifest.name || "";
+    $("#mf-version").value = p.manifest.version || "";
+    $("#mf-author").value = p.manifest.author || "";
+    $("#mf-language").value = p.manifest.language || "Python";
+    $("#mf-description").value = p.manifest.description || "";
+    $("#mf-specver").textContent = p.manifest.jno_spec_version || "1.0";
+    $("#mf-created").textContent = p.manifest.created_at || "—";
+
+    $("#mf-name-err").style.display = p.manifest.name && p.manifest.name.trim() ? "none" : "block";
+    const semverOk = /^\d+\.\d+\.\d+/.test(p.manifest.version || "");
+    $("#mf-version-err").style.display = semverOk ? "none" : "block";
+    $("#mf-desc-count").textContent = `${(p.manifest.description || "").length}/300`;
+
+    const entrySel = $("#mf-entry");
+    entrySel.innerHTML = "";
+    const files = State.fileNodes();
+    if (files.length === 0) {
+      const opt = document.createElement("option");
+      opt.textContent = "(파일 없음)"; opt.value = "";
+      entrySel.appendChild(opt);
+    } else {
+      for (const f of files) {
+        const opt = document.createElement("option");
+        opt.value = f.path; opt.textContent = f.path;
+        if (f.path === p.manifest.entry) opt.selected = true;
+        entrySel.appendChild(opt);
+      }
+    }
+    const entryExists = !p.manifest.entry || files.some(f => f.path === p.manifest.entry);
+    $("#mf-entry-err").style.display = entryExists ? "none" : "block";
+
+    // v2 — multi entry point checklist (every file except the current primary)
+    const entriesHost = $("#mf-entries-list");
+    entriesHost.innerHTML = "";
+    const others = files.filter(f => f.path !== p.manifest.entry);
+    $("#mf-entries-empty").style.display = files.length === 0 ? "block" : "none";
+    if (p.manifest.entry) {
+      const row = document.createElement("div");
+      row.className = "entry-check-row is-primary";
+      row.innerHTML = `<input type="checkbox" checked disabled><span class="ecpath">${escapeHtml(p.manifest.entry)}</span><span class="ecbadge">Primary</span>`;
+      entriesHost.appendChild(row);
+    }
+    const currentEntries = new Set(p.manifest.entries || []);
+    for (const f of others) {
+      const row = document.createElement("div");
+      row.className = "entry-check-row";
+      const checked = currentEntries.has(f.path);
+      row.innerHTML = `<input type="checkbox" data-entry-path="${escapeHtml(f.path)}" ${checked ? "checked" : ""}><span class="ecpath">${escapeHtml(f.path)}</span>`;
+      row.querySelector("input").addEventListener("change", () => {
+        const checkedPaths = Array.from(entriesHost.querySelectorAll('input[data-entry-path]:checked')).map(el => el.dataset.entryPath);
+        State.setEntries(p.manifest.entry, checkedPaths);
+      });
+      entriesHost.appendChild(row);
+    }
+
+    // v2 — AI agent instructions (AIIN chunk)
+    const ai = p.aiInstructions || {};
+    if (document.activeElement !== $("#ai-instructions")) $("#ai-instructions").value = ai.instructions || "";
+    if (document.activeElement !== $("#ai-priority-files")) $("#ai-priority-files").value = (ai.priorityFiles || []).join("\n");
+    if (document.activeElement !== $("#ai-constraints")) $("#ai-constraints").value = (ai.constraints || []).join("\n");
+  }
+
+  function renderHeaderPanel() {
+    const p = State.get();
+    const tbl = $("#headerTable");
+    tbl.innerHTML = "";
+    if (!p) return;
+    const flagsBin = ((p.security === 2 || p.security === 3) ? 0b01 : 0) | (p.security === 3 ? 0b10 : 0);
+    const rows = [
+      ["Magic Number", `"JNO1" (4A 4E 4F 31)`],
+      ["Version", `${JnoFormat.SPEC_VERSION.major}.${p.versionMinor ?? 0}`],
+      ["Flags", `0b${flagsBin.toString(2).padStart(8,"0")}` + (p.security===3 ? " (encrypted + full-encryption)" : p.security===2 ? " (encrypted)" : "")],
+      ["Compression ID (default)", `0x${(p.compressionId ?? 0).toString(16).padStart(2,"0")} (Store)`],
+      ["Security", p.security === 3 ? "3 (Full Encryption)" : p.security === 2 ? "2 (Password Protected)" : "1 (Public)"],
+      ["File Count", p.security === 3 ? "0 (헤더에서 숨김 — 실제로는 " + State.fileNodes().length + "개)" : String(State.fileNodes().length)],
+      ["Header Size", "32 bytes (fixed)"],
+    ];
+    for (const [k, v] of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="k">${k}</td><td class="v">${v}</td>`;
+      tbl.appendChild(tr);
+    }
+    const minorInput = $("#hdr-versionminor");
+    if (document.activeElement !== minorInput) minorInput.value = String(p.versionMinor ?? 0);
+    $("#hdr-fullenc-note").style.display = p.security === 3 ? "block" : "none";
+  }
+
+  async function renderFileTablePanel() {
+    const files = State.fileNodes();
+    const tbody = $("#fileTableEl tbody");
+    tbody.innerHTML = "";
+    if (files.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px;">파일이 없습니다</td></tr>`;
+      $("#fileTableTotals").textContent = "0개 파일 · 0 B";
+      return;
+    }
+    // offsets follow the exact order JnoFormat.build() concatenates files into FDAT
+    let cursor = 0;
+    for (const f of files) {
+      const tr = document.createElement("tr");
+      const size = f.bytes.length;
+      const offset = cursor;
+      cursor += size;
+      const shaLabel = f.sha256 ? `<span title="${f.sha256}">${f.sha256.slice(0,16)}…</span>` : "(empty)";
+      tr.innerHTML = `
+        <td>${escapeHtml(State.path.basename(f.path))}</td>
+        <td class="path">${escapeHtml(f.path)}</td>
+        <td>${Util.fmtBytes(size)}</td>
+        <td>0x00 Store</td>
+        <td class="hash">${shaLabel}</td>
+        <td>0x${offset.toString(16).padStart(8,"0")} (${offset})</td>`;
+      tbody.appendChild(tr);
+    }
+    // totals footer stays in sync automatically on every render() call
+    $("#fileTableTotals").innerHTML = `총 <b>${files.length}</b>개 파일 · 총 크기 <b>${Util.fmtBytes(cursor)}</b> · FDAT 끝 오프셋 <b>0x${cursor.toString(16).padStart(8,"0")}</b>`;
+  }
+
+  async function renderSecurityPanel() {
+    const p = State.get();
+    if (!p) return;
+    $("#secPublicBtn").classList.toggle("on", p.security === 1);
+    $("#secPasswordBtn").classList.toggle("on", p.security === 2);
+    $("#secFullBtn").classList.toggle("on", p.security === 3);
+    $("#pwFieldWrap").style.display = (p.security === 2 || p.security === 3) ? "block" : "none";
+    $("#pwHintText").innerHTML = p.security === 3
+      ? "키 유도: PBKDF2-SHA256 · 200,000 iterations · salt 16B<br>암호화: AES-256-GCM (MANI/FTBL/FDAT/AIIN 전부 암호화)<br><b style=\"color:var(--danger)\">Full Encryption: 헤더의 File Count도 0으로 기록되어 숨겨집니다.</b>"
+      : "키 유도: PBKDF2-SHA256 · 200,000 iterations · salt 16B<br>암호화: AES-256-GCM (파일별 개별 nonce, MANI/FTBL/FDAT/AIIN 각각 암호화)";
+    $("#compSelect").value = String(p.compressionId ?? 0);
+
+    const hasKey = SignKey.hasKeypair();
+    $("#sec-signed").checked = p.signed;
+    $("#sec-signed").disabled = !hasKey;
+    $("#signKeyHint").style.display = hasKey ? "none" : "block";
+
+    const statusHost = $("#signVerifyStatus");
+    if (p.signatureInfo && p.signatureInfo.present) {
+      const s = p.signatureInfo;
+      statusHost.innerHTML = s.valid
+        ? `<div class="sign-status valid">서명 검증됨 — 키 지문 ${escapeHtml(s.fingerprint || "?")} (${escapeHtml(s.alg || "ECDSA")})</div>`
+        : `<div class="sign-status invalid">서명 검증 실패 — 파일이 변조되었거나 다른 키로 서명되었습니다.</div>`;
+    } else if (hasKey) {
+      const fp = await SignKey.currentFingerprint();
+      statusHost.innerHTML = `<div class="sign-status none">현재 서명 키 지문: ${escapeHtml(fp || "—")}</div>`;
+    } else {
+      statusHost.innerHTML = "";
+    }
+  }
+
+  function renderStructureTree() {
+    const host = $("#structureTree");
+    const p = State.get();
+    host.innerHTML = "";
+    if (!p) return;
+    const files = State.fileNodes();
+    const encrypted = p.security === 2 || p.security === 3;
+    const ai = p.aiInstructions || {};
+    const hasAi = (ai.instructions && ai.instructions.trim()) || (ai.priorityFiles && ai.priorityFiles.length) || (ai.constraints && ai.constraints.length);
+
+    const root = document.createElement("div");
+    root.innerHTML = `<div class="struct-node"><span class="sicon" style="background:var(--accent-strong);">J</span><span class="slabel">${escapeHtml(p.filename)}</span><span class="smeta">JNO v${JnoFormat.SPEC_VERSION.major}.${p.versionMinor ?? 0}</span></div>`;
+    host.appendChild(root);
+
+    const branch = document.createElement("div");
+    branch.className = "struct-branch";
+    const nodes = [
+      { icon: "HDR", color: "var(--text-dim)", label: "Header", meta: p.security === 3 ? "32 bytes · File Count 숨김" : "32 bytes · fixed" },
+      { icon: "MANI", color: "var(--accent)", label: "Manifest", meta: encrypted ? "🔒 암호화됨" : "평문" },
+      { icon: "FTBL", color: "var(--data)", label: "File Table", meta: `${files.length}개 항목` + (encrypted ? " · 🔒 암호화됨" : "") },
+      { icon: "FDAT", color: "var(--success)", label: "File Data", meta: Util.fmtBytes(files.reduce((a,f)=>a+f.bytes.length,0)) + (encrypted ? " · 🔒 암호화됨" : "") },
+      { icon: "SEC", color: encrypted ? "var(--danger)" : "var(--text-dim)", label: "Security",
+        meta: p.security === 3 ? "Full Encryption (AES-256-GCM)" : p.security === 2 ? "Password Protected (AES-256-GCM)" : "Public — 비활성" },
+    ];
+    if (hasAi) nodes.push({ icon: "AIIN", color: "var(--data)", label: "AI Instructions", meta: (encrypted ? "🔒 암호화됨" : "평문") + " · v2" });
+    if (p.signed) nodes.push({ icon: "SIGN", color: "var(--accent-strong)", label: "Signature", meta: "ECDSA P-256 · v2" });
+    for (const n of nodes) {
+      const el = document.createElement("div");
+      el.className = "struct-node";
+      el.innerHTML = `<span class="sicon" style="background:${n.color};font-size:9px;">${n.icon.slice(0,3)}</span><span class="slabel">${n.label}</span><span class="smeta">${n.meta}</span>`;
+      branch.appendChild(el);
+    }
+    host.appendChild(branch);
+  }
+
+  function renderStructurePanel() {
+    const p = State.get();
+    renderStructureTree();
+    const bar = $("#structureBar");
+    const legend = $("#structureLegend");
+    const list = $("#chunkList");
+    bar.innerHTML = ""; legend.innerHTML = ""; list.innerHTML = "";
+    if (!p) return;
+
+    const files = State.fileNodes();
+    const encrypted = p.security === 2 || p.security === 3;
+    const ai = p.aiInstructions || {};
+    const hasAi = (ai.instructions && ai.instructions.trim()) || (ai.priorityFiles && ai.priorityFiles.length) || (ai.constraints && ai.constraints.length);
+    const totalFileBytes = files.reduce((a, f) => a + f.bytes.length, 0);
+    const segments = [
+      { tag: "HDR", label: "Header", size: 32, color: "var(--text-dim)" },
+    ];
+    if (encrypted) segments.push({ tag: "SECU", label: "Security", size: 12 + 68 + 4, color: "var(--danger)" });
+    segments.push({ tag: "MANI", label: "Manifest", size: 12 + JSON.stringify(p.manifest).length + 4, color: "var(--accent)" });
+    segments.push({ tag: "FTBL", label: "File Table", size: 12 + Math.max(2, files.length * 90) + 4, color: "var(--data)" });
+    segments.push({ tag: "FDAT", label: "File Data", size: 12 + totalFileBytes + 4, color: "var(--success)" });
+    if (hasAi) segments.push({ tag: "AIIN", label: "AI Instructions", size: 12 + JSON.stringify(ai).length + 4, color: "var(--data)" });
+    segments.push({ tag: "CKSM", label: "Checksum", size: 12 + 32 + 4, color: "var(--text-secondary)" });
+    if (p.signed) segments.push({ tag: "SIGN", label: "Signature", size: 12 + 260 + 4, color: "var(--accent-strong)" });
+
+    const total = segments.reduce((a, s) => a + s.size, 0) || 1;
+    for (const s of segments) {
+      const pct = Math.max((s.size / total) * 100, 1.5);
+      const seg = document.createElement("div");
+      seg.className = "structure-seg";
+      seg.style.width = pct + "%";
+      seg.style.background = s.color.startsWith("var") ? getComputedStyle(document.documentElement).getPropertyValue(s.color.slice(4,-1)) : s.color;
+      seg.innerHTML = `${s.tag}<small>${Util.fmtBytes(s.size)}</small>`;
+      seg.title = `${s.label} — ${Util.fmtBytes(s.size)}`;
+      bar.appendChild(seg);
+
+      const leg = document.createElement("div");
+      leg.className = "leg-item";
+      leg.innerHTML = `<span class="leg-swatch" style="background:${s.color}"></span>${s.label} (${s.tag})`;
+      legend.appendChild(leg);
+
+      const row = document.createElement("div");
+      row.className = "chunkrow";
+      row.innerHTML = `<span class="ctag" style="background:${s.color};color:#0d0f14;">${s.tag}</span>
+        <span class="cmeta">${s.label}${s.tag==="MANI"||s.tag==="FTBL"||s.tag==="FDAT"||s.tag==="AIIN"?(encrypted?" · 🔒 AES-256-GCM 암호화":" · 평문"):""}</span>
+        <span class="cbytes">${Util.fmtBytes(s.size)}</span>`;
+      list.appendChild(row);
+    }
+  }
+
+  function renderRecentPanel() {
+    const host = $("#recentList");
+    host.innerHTML = "";
+    const items = RecentProjects.list();
+    if (items.length === 0) {
+      host.innerHTML = `<div class="sb-empty" style="padding:24px 4px;">아직 저장하거나 연 프로젝트가 없습니다.</div>`;
+      return;
+    }
+    for (const it of items) {
+      const row = document.createElement("div");
+      row.className = "recent-item";
+      const canReopen = !!it.dataB64;
+      row.innerHTML = `
+        <div class="ricon">${escapeHtml((it.name || it.filename || "?").slice(0,1).toUpperCase())}</div>
+        <div class="rmain">
+          <div class="rname">${escapeHtml(it.name || it.filename)}</div>
+          <div class="rmeta">${escapeHtml(it.filename)} · ${Util.fmtBytes(it.size)} · ${it.security === 2 ? "Password Protected" : "Public"} · ${new Date(it.savedAt).toLocaleString()}</div>
+        </div>
+        <div class="ractions">
+          <button class="btn" data-act="open" ${canReopen ? "" : "disabled title=\"용량이 커서 캐시되지 않았습니다. 파일에서 다시 열어주세요.\""}>${canReopen ? "열기" : "캐시 없음"}</button>
+          <button class="btn danger" data-act="remove">삭제</button>
+        </div>`;
+      row.querySelector('[data-act="open"]').onclick = async () => {
+        const bytes = RecentProjects.getBytes(it.filename);
+        if (!bytes) return;
+        try {
+          const header = JnoFormat.readHeader(bytes);
+          const parsed = await JnoFormat.parse(bytes, () => promptPasswordRef(header));
+          State.loadParsed(parsed, it.filename);
+          UI.openPanel("manifest");
+          toast(`"${it.filename}" 열림`, "ok");
+        } catch (err) {
+          if (err && err.code === "WRONG_PASSWORD") toast("비밀번호가 올바르지 않습니다.", "err");
+          else toast("파일을 여는 중 오류: " + err.message, "err");
+        }
+      };
+      row.querySelector('[data-act="remove"]').onclick = () => { RecentProjects.remove(it.filename); render(); };
+      host.appendChild(row);
+    }
+  }
+
+  function renderStatsPanel() {
+    const p = State.get();
+    const tilesHost = $("#statTiles");
+    const extHost = $("#statExtBreakdown");
+    const summaryTbl = $("#statSummaryTable");
+    tilesHost.innerHTML = ""; extHost.innerHTML = ""; summaryTbl.innerHTML = "";
+    if (!p) return;
+    const files = State.fileNodes();
+    const folders = p.files.filter(n => n.type === "folder");
+    const totalSize = files.reduce((a, f) => a + f.bytes.length, 0);
+    const avgSize = files.length ? totalSize / files.length : 0;
+    let largest = null;
+    for (const f of files) if (!largest || f.bytes.length > largest.bytes.length) largest = f;
+
+    const tiles = [
+      { num: files.length, label: "파일 수" },
+      { num: folders.length, label: "폴더 수" },
+      { num: Util.fmtBytes(totalSize), label: "총 용량" },
+      { num: Util.fmtBytes(avgSize), label: "평균 파일 크기" },
+    ];
+    for (const t of tiles) {
+      const el = document.createElement("div");
+      el.className = "stat-tile";
+      el.innerHTML = `<div class="stnum">${t.num}</div><div class="stlabel">${t.label}</div>`;
+      tilesHost.appendChild(el);
+    }
+
+    const byExt = new Map();
+    for (const f of files) {
+      const ext = (f.path.includes(".") ? f.path.split(".").pop().toLowerCase() : "(확장자 없음)");
+      byExt.set(ext, (byExt.get(ext) || 0) + f.bytes.length);
+    }
+    const sortedExt = Array.from(byExt.entries()).sort((a, b) => b[1] - a[1]);
+    if (sortedExt.length === 0) {
+      extHost.innerHTML = `<div class="sb-empty">파일이 없습니다.</div>`;
+    } else {
+      const max = sortedExt[0][1] || 1;
+      for (const [ext, size] of sortedExt) {
+        const row = document.createElement("div");
+        row.className = "stat-bar-row";
+        row.innerHTML = `<span class="sblabel">.${escapeHtml(ext)}</span>
+          <span class="stat-bar-track"><span class="stat-bar-fill" style="width:${Math.max((size/max)*100,3)}%;"></span></span>
+          <span class="sbval">${Util.fmtBytes(size)}</span>`;
+        extHost.appendChild(row);
+      }
+    }
+
+    const rows = [
+      ["Security", p.security === 2 ? "Password Protected" : "Public"],
+      ["Compression", "0x00 · Store"],
+      ["가장 큰 파일", largest ? `${largest.path} (${Util.fmtBytes(largest.bytes.length)})` : "—"],
+      ["마지막 수동 저장", p.lastSavedAt ? new Date(p.lastSavedAt).toLocaleString() : "저장한 적 없음"],
+      ["현재 상태", p.dirty ? "Modified (미저장 변경사항 있음)" : "Saved"],
+    ];
+    for (const [k, v] of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="k">${k}</td><td class="v">${escapeHtml(String(v))}</td>`;
+      summaryTbl.appendChild(tr);
+    }
+  }
+
+  function renderLogPanel() {
+    const host = $("#logHost");
+    const entries = Logger.all();
+    if (entries.length === 0) {
+      host.innerHTML = `<div class="log-empty">기록된 로그가 없습니다.</div>`;
+      return;
+    }
+    host.innerHTML = "";
+    for (const e of entries) {
+      const row = document.createElement("div");
+      row.className = "log-entry";
+      const time = e.time instanceof Date ? e.time : new Date(e.time);
+      row.innerHTML = `<span class="log-time">${time.toLocaleTimeString()}</span>
+        <span class="log-badge ${e.level}">${e.level}</span>
+        <span class="log-msg">${escapeHtml(e.message)}</span>`;
+      host.appendChild(row);
+    }
+  }
+
+  const PREVIEW_TRUNC_LIMIT = 6000;
+  const AUDIO_MIME = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg" };
+  const IMAGE_MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml" };
+  let previewObjectUrl = null;
+
+  function renderPreviewPanel() {
+    if (!previewFile) return;
+    if (previewObjectUrl) { URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
+
+    $("#previewTitle").textContent = previewFile.path;
+    $("#previewSub").textContent = "FDAT 청크에 저장된 개별 파일입니다.";
+    $("#pv-size").textContent = Util.fmtBytes(previewFile.size ?? previewFile.bytes.length);
+    $("#pv-sha").textContent = previewFile.sha256;
+    $("#pv-comp").textContent = "0x00 · Store";
+    const content = $("#pv-content");
+    const truncNotice = $("#pv-truncnotice");
+    const showAllRow = $("#pv-showall-row");
+    const showAllBtn = $("#pv-showall-btn");
+    content.classList.toggle("expanded", previewShowAll);
+
+    const ext = previewFile.path.split(".").pop().toLowerCase();
+
+    if (AUDIO_MIME[ext]) {
+      previewObjectUrl = URL.createObjectURL(new Blob([previewFile.bytes], { type: AUDIO_MIME[ext] }));
+      content.innerHTML = `<div class="media-preview"><audio controls src="${previewObjectUrl}"></audio></div>`;
+      truncNotice.style.display = "none";
+      showAllRow.style.display = "none";
+      return;
+    }
+    if (IMAGE_MIME[ext]) {
+      previewObjectUrl = URL.createObjectURL(new Blob([previewFile.bytes], { type: IMAGE_MIME[ext] }));
+      content.innerHTML = `<div class="media-preview"><img src="${previewObjectUrl}" alt="${escapeHtml(previewFile.path)}"></div>`;
+      truncNotice.style.display = "none";
+      showAllRow.style.display = "none";
+      return;
+    }
+
+    try {
+      const text = Util.dec.decode(previewFile.bytes);
+      const printable = /^[\s\S]*$/.test(text) && !/[\u0000-\u0008\u000E-\u001F]/.test(text.slice(0, 2000));
+      if (!printable) {
+        content.textContent = "(바이너리 파일 — 텍스트 미리보기 불가)";
+        truncNotice.style.display = "none";
+        showAllRow.style.display = "none";
+        return;
+      }
+      const isTruncated = text.length > PREVIEW_TRUNC_LIMIT && !previewShowAll;
+      content.textContent = isTruncated ? text.slice(0, PREVIEW_TRUNC_LIMIT) : text;
+      truncNotice.style.display = isTruncated ? "inline" : "none";
+      if (text.length > PREVIEW_TRUNC_LIMIT) {
+        showAllRow.style.display = "flex";
+        showAllBtn.textContent = previewShowAll ? "일부만 보기" : `전체 보기 (${Util.fmtBytes(text.length)})`;
+        showAllBtn.onclick = () => { previewShowAll = !previewShowAll; render(); };
+      } else {
+        showAllRow.style.display = "none";
+      }
+    } catch {
+      content.textContent = "(바이너리 파일 — 텍스트 미리보기 불가)";
+      truncNotice.style.display = "none";
+      showAllRow.style.display = "none";
+    }
+  }
+
+  function renderStatusBar() {
+    const p = State.get();
+    const sb = $("#statusbar");
+    sb.classList.toggle("locked", !!(p && p.security === 2));
+    const files = State.fileNodes();
+    $("#stSecurity").textContent = p ? (p.security === 2 ? "🔒 Password Protected" : "🔓 Public") : "—";
+    $("#stFiles").textContent = p ? `${files.length} file${files.length===1?"":"s"}` : "0 files";
+    $("#stSize").textContent = p ? Util.fmtBytes(files.reduce((a,f)=>a+f.bytes.length,0)) : "0 B";
+    $("#stComp").textContent = "Compression: Store";
+    $("#stSaved").textContent = p && p.lastSavedAt ? "Saved " + new Date(p.lastSavedAt).toLocaleTimeString() : "Not saved yet";
+  }
+
+  function renderTopbar() {
+    const p = State.get();
+    $("#filenameDisplay").innerHTML = p ? `<b>${escapeHtml(p.filename)}</b>` : "프로젝트 없음";
+    $("#btnSave").disabled = !p;
+    const badge = $("#statusBadge");
+    const badgeText = $("#statusBadgeText");
+    if (!p) { badge.classList.remove("show"); return; }
+    badge.classList.add("show");
+    if (p.dirty) {
+      badge.className = "status-badge show modified";
+      badgeText.textContent = "Modified";
+    } else {
+      badge.className = "status-badge show saved";
+      badgeText.textContent = "Saved";
+    }
+  }
+
+  function render() {
+    const p = State.get();
+    // panel visibility
+    $$(".panel").forEach(el => el.classList.remove("active"));
+    const panelId = "panel-" + (activePanel === "empty" ? "empty" : activePanel);
+    const el = $("#" + panelId);
+    if (el) el.classList.add("active");
+
+    renderTabs();
+    renderActivityBar();
+    renderExplorer();
+    renderTopbar();
+    renderStatusBar();
+
+    if (activePanel === "manifest") renderManifestPanel();
+    if (activePanel === "header") renderHeaderPanel();
+    if (activePanel === "filetable") renderFileTablePanel();
+    if (activePanel === "security") renderSecurityPanel();
+    if (activePanel === "structure") renderStructurePanel();
+    if (activePanel === "preview") renderPreviewPanel();
+    if (activePanel === "recent") renderRecentPanel();
+    if (activePanel === "stats") renderStatsPanel();
+    if (activePanel === "log") renderLogPanel();
+
+    const restoreBtn = $("#restoreAutosaveBtn");
+    if (restoreBtn) restoreBtn.style.display = (!p && AutoSave.hasSnapshot()) ? "inline-flex" : "none";
+
+    AutoSave.schedule(p, Settings.get().autosaveEnabled);
+  }
+
+  function deleteCurrentPreview() {
+    if (activePanel !== "preview" || !previewFile) return false;
+    const path = previewFile.path;
+    if (!confirm(`"${State.path.basename(path)}" 파일을 삭제할까요?`)) return true;
+    State.removeFile(path);
+    closeTab("preview");
+    toast(`"${State.path.basename(path)}" 삭제됨`);
+    return true;
+  }
+
+  return {
+    render, openPanel, toast, setPasswordPrompt, deleteCurrentPreview,
+    _setSearchQuery: (q) => { searchQuery = q; },
+    get $() { return $; },
+  };
+})();
+
+/* ======================================================================
+   BOOTSTRAP — event wiring
+   ====================================================================== */
+(function bootstrap() {
+  const $ = document.querySelector.bind(document);
+
+  State.subscribe(() => UI.render());
+
+  // Activity bar navigation
+  document.querySelectorAll(".abtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (!State.get() && btn.dataset.panel !== "explorer" && btn.dataset.panel !== "manual") {
+        UI.toast("먼저 프로젝트를 새로 만들거나 열어주세요.", "err");
+        return;
+      }
+      if (btn.dataset.panel === "explorer") return; // explorer is the sidebar itself
+      UI.openPanel(btn.dataset.panel);
+    });
+  });
+
+  // New project modal
+  const modalNew = $("#modalNew");
+  let pendingNewProjectFiles = [];
+  function renderPendingFileList() {
+    const host = $("#newProjectFileList");
+    host.innerHTML = "";
+    pendingNewProjectFiles.forEach((f, i) => {
+      const row = document.createElement("div");
+      row.className = "pending-file-row";
+      row.innerHTML = `<span>${f.name}</span><span style="color:var(--text-dim);">(${Util.fmtBytes(f.size)})</span><span class="pf-remove">✕</span>`;
+      row.querySelector(".pf-remove").onclick = () => { pendingNewProjectFiles.splice(i, 1); renderPendingFileList(); };
+      host.appendChild(row);
+    });
+  }
+  function showNewModal() {
+    $("#new-author").value = Settings.get().defaultAuthor || "User";
+    pendingNewProjectFiles = [];
+    renderPendingFileList();
+    modalNew.classList.add("show");
+  }
+  function hideNewModal() { modalNew.classList.remove("show"); }
+  $("#btnNew").onclick = showNewModal;
+  $("#emptyNewBtn").onclick = showNewModal;
+  $("#newCancelBtn").onclick = hideNewModal;
+
+  $("#newProjectDropzone").onclick = () => $("#newProjectFileInput").click();
+  $("#newProjectFileInput").addEventListener("change", (e) => {
+    pendingNewProjectFiles.push(...Array.from(e.target.files));
+    renderPendingFileList();
+    e.target.value = "";
+  });
+  $("#newProjectDropzone").addEventListener("dragover", (e) => { e.preventDefault(); $("#newProjectDropzone").classList.add("dragover"); });
+  $("#newProjectDropzone").addEventListener("dragleave", () => $("#newProjectDropzone").classList.remove("dragover"));
+  $("#newProjectDropzone").addEventListener("drop", (e) => {
+    e.preventDefault();
+    $("#newProjectDropzone").classList.remove("dragover");
+    pendingNewProjectFiles.push(...Array.from(e.dataTransfer.files));
+    renderPendingFileList();
+  });
+
+  $("#newCreateBtn").onclick = async () => {
+    const manifest = {
+      name: $("#new-name").value.trim() || "my-project",
+      version: $("#new-version").value.trim() || "1.0.0",
+      author: $("#new-author").value.trim() || "User",
+      language: $("#new-language").value,
+      entry: "",
+      entries: [],
+      description: "",
+      jno_spec_version: "1.0",
+      created_at: Util.nowISO(),
+    };
+    State.reset(manifest);
+    if (pendingNewProjectFiles.length) {
+      await State.addFiles(pendingNewProjectFiles, "");
+    }
+    hideNewModal();
+    UI.openPanel("manifest");
+    UI.toast(`프로젝트 "${manifest.name}" 생성됨` + (pendingNewProjectFiles.length ? ` (파일 ${pendingNewProjectFiles.length}개 포함)` : ""), "ok");
+    pendingNewProjectFiles = [];
+  };
+
+  // Open .jno
+  $("#btnOpen").onclick = () => $("#fileOpenInput").click();
+  $("#emptyOpenBtn").onclick = () => $("#fileOpenInput").click();
+  $("#fileOpenInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const header = JnoFormat.readHeader(bytes); // quick pre-check for a nicer password prompt
+      const parsed = await JnoFormat.parse(bytes, () => promptPassword(header));
+      State.loadParsed(parsed, file.name);
+      RecentProjects.add({
+        filename: file.name, name: parsed.manifest.name, version: parsed.manifest.version,
+        author: parsed.manifest.author, security: parsed.security, bytes,
+      });
+      UI.openPanel("manifest");
+      UI.toast(`"${file.name}" 열림`, "ok");
+    } catch (err) {
+      if (err && err.code === "WRONG_PASSWORD") {
+        UI.toast("비밀번호가 올바르지 않아 파일을 열 수 없습니다.", "err");
+      } else {
+        UI.toast("파일을 여는 중 오류: " + err.message, "err");
+      }
+    }
+  });
+
+  // Password modal, returns a Promise<string> resolved on confirm
+  const modalPw = $("#modalPassword");
+  function promptPassword(header) {
+    return new Promise((resolve, reject) => {
+      $("#pwErrorMsg").style.display = "none";
+      $("#pw-input").value = "";
+      modalPw.classList.add("show");
+      $("#pw-input").focus();
+      const onConfirm = () => {
+        cleanup();
+        resolve($("#pw-input").value);
+      };
+      const onCancel = () => {
+        cleanup();
+        reject(new Error("사용자가 취소했습니다"));
+      };
+      function cleanup() {
+        modalPw.classList.remove("show");
+        $("#pwConfirmBtn").removeEventListener("click", onConfirm);
+        $("#pwCancelBtn").removeEventListener("click", onCancel);
+      }
+      $("#pwConfirmBtn").addEventListener("click", onConfirm);
+      $("#pwCancelBtn").addEventListener("click", onCancel);
+    });
+  }
+  UI.setPasswordPrompt(promptPassword);
+
+  // Add files (upload)
+  $("#btnAddFile").onclick = () => {
+    if (!State.get()) { UI.toast("먼저 프로젝트를 새로 만들어주세요.", "err"); return; }
+    $("#fileAddInput").click();
+  };
+  $("#fileAddInput").addEventListener("change", async (e) => {
+    if (e.target.files.length) {
+      await State.addFiles(e.target.files, "");
+      UI.toast(`${e.target.files.length}개 파일 추가됨`, "ok");
+    }
+    e.target.value = "";
+  });
+
+  // New (empty) file
+  $("#btnNewFile").onclick = async () => {
+    if (!State.get()) { UI.toast("먼저 프로젝트를 새로 만들어주세요.", "err"); return; }
+    const name = prompt("새 파일 이름 (예: main.py)");
+    if (!name || !name.trim()) return;
+    const path = await State.addEmptyFile(name.trim(), "");
+    UI.toast(`"${path}" 생성됨`, "ok");
+  };
+
+  // New folder
+  $("#btnNewFolder").onclick = () => {
+    if (!State.get()) { UI.toast("먼저 프로젝트를 새로 만들어주세요.", "err"); return; }
+    const name = prompt("새 폴더 이름 (예: src)");
+    if (!name || !name.trim()) return;
+    const path = State.addFolder(name.trim(), "");
+    UI.toast(`"${path}" 폴더 생성됨`, "ok");
+  };
+
+  // Manifest editor — every field updates the in-memory Manifest immediately
+  const mfLiveFields = [
+    ["#mf-name", "name", v => { State.setFilename((v || "project") + ".jno"); return v; }],
+    ["#mf-version", "version"],
+    ["#mf-author", "author"],
+    ["#mf-language", "language"],
+    ["#mf-description", "description"],
+  ];
+  for (const [sel, key, transform] of mfLiveFields) {
+    const el = $(sel);
+    const evt = (el.tagName === "SELECT") ? "change" : "input";
+    el.addEventListener(evt, () => {
+      const raw = el.value;
+      const v = transform ? transform(raw) : raw;
+      State.updateManifest({ [key]: typeof v === "string" ? v : raw });
+    });
+  }
+  // Entry File select is handled separately so the entries[] (v2 multi entry point) array stays consistent
+  $("#mf-entry").addEventListener("change", (e) => {
+    const p = State.get();
+    if (!p) return;
+    const newPrimary = e.target.value;
+    const additional = (p.manifest.entries || []).filter(path => path !== newPrimary && path !== p.manifest.entry);
+    State.setEntries(newPrimary, additional);
+  });
+  // kept as a convenience action (all fields already save live on change)
+  $("#mfSaveBtn").onclick = () => UI.toast("Manifest는 변경 즉시 자동 저장됩니다.", "ok");
+
+  // AI agent instructions (AIIN chunk)
+  $("#aiSaveBtn").onclick = () => {
+    State.setAiInstructions({
+      instructions: $("#ai-instructions").value,
+      priorityFiles: $("#ai-priority-files").value.split("\n").map(s => s.trim()).filter(Boolean),
+      constraints: $("#ai-constraints").value.split("\n").map(s => s.trim()).filter(Boolean),
+    });
+    UI.toast("AI 에이전트 지시사항이 저장되었습니다 (AIIN 청크).", "ok");
+  };
+
+  // Security — 1 Public / 2 Password Protected / 3 Full Encryption
+  $("#secPublicBtn").onclick = () => { State.setSecurity(1, null); UI.render(); };
+  $("#secPasswordBtn").onclick = () => { State.get().security = 2; UI.render(); };
+  $("#secFullBtn").onclick = () => { State.get().security = 3; UI.render(); };
+  $("#secSaveBtn").onclick = () => {
+    const p = State.get();
+    if (!p) return;
+    if (p.security === 2 || p.security === 3) {
+      const pw = $("#mf-password").value;
+      if (!pw || pw.length < 4) { UI.toast("비밀번호는 4자 이상이어야 합니다.", "err"); return; }
+      State.setSecurity(p.security, pw);
+      UI.toast(p.security === 3
+        ? "Full Encryption 활성화됨 — Manifest/File Table/File Data/AI 지시사항과 헤더의 파일 개수까지 모두 숨겨집니다."
+        : "비밀번호 보호 활성화됨 — 저장 시 Manifest/File Table/File Data가 모두 암호화됩니다.", "ok");
+    } else {
+      State.setSecurity(1, null);
+      UI.toast("Public 모드로 설정됨", "ok");
+    }
+  };
+  $("#sec-signed").addEventListener("change", (e) => {
+    State.setSigned(e.target.checked);
+    UI.toast(e.target.checked ? "저장 시 이 프로젝트에 서명합니다 (SIGN 청크)." : "서명이 비활성화되었습니다.", "ok");
+  });
+  $("#compSelect").addEventListener("change", (e) => {
+    const p = State.get();
+    if (!p) return;
+    p.compressionId = Number(e.target.value);
+    State.markDirty();
+  });
+
+  // Save .jno
+  $("#btnSave").onclick = async () => {
+    const p = State.get();
+    if (!p) return;
+    if (p.security === 2 && !p.password) {
+      UI.openPanel("security");
+      UI.toast("비밀번호를 먼저 설정해주세요.", "err");
+      return;
+    }
+    try {
+      $("#btnSave").disabled = true;
+      $("#btnSave").textContent = "⏳ Building…";
+      const bytes = await JnoFormat.build(p);
+      const blob = new Blob([bytes], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = p.filename.endsWith(".jno") ? p.filename : p.filename + ".jno";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      State.markSaved();
+      RecentProjects.add({
+        filename: a.download, name: p.manifest.name, version: p.manifest.version,
+        author: p.manifest.author, security: p.security, bytes,
+      });
+      UI.toast(`"${a.download}" 저장됨 (${Util.fmtBytes(bytes.length)})`, "ok");
+    } catch (err) {
+      UI.toast("저장 중 오류: " + err.message, "err");
+    } finally {
+      $("#btnSave").disabled = false;
+      $("#btnSave").textContent = "⤓ Save .jno";
+      UI.render();
+    }
+  };
+
+  // Header editor — editable Version Minor
+  $("#hdr-versionminor").addEventListener("change", (e) => {
+    if (!State.get()) return;
+    State.setVersionMinor(e.target.value);
+    UI.toast("Header Version Minor 갱신됨", "ok");
+  });
+
+  // Explorer search / folder search (filters both files and folders by name)
+  const searchInput = $("#explorerSearch");
+  const searchClear = $("#explorerSearchClear");
+  searchInput.addEventListener("input", () => {
+    UI._setSearchQuery(searchInput.value.trim());
+    searchClear.classList.toggle("show", !!searchInput.value.trim());
+    UI.render();
+  });
+  searchClear.addEventListener("click", () => {
+    searchInput.value = "";
+    UI._setSearchQuery("");
+    searchClear.classList.remove("show");
+    UI.render();
+  });
+
+  // Settings modal
+  const modalSettings = $("#modalSettings");
+  async function refreshKeyFingerprintDisplay() {
+    const el = $("#settingsKeyFingerprint");
+    if (!SignKey.hasKeypair()) { el.textContent = "생성된 서명 키가 없습니다."; return; }
+    const fp = await SignKey.currentFingerprint();
+    el.textContent = "현재 키 지문: " + fp;
+  }
+  function openSettingsModal() {
+    const s = Settings.get();
+    $("#set-default-author").value = s.defaultAuthor;
+    $("#set-autosave-enabled").checked = s.autosaveEnabled;
+    $("#set-autosave-interval").value = String(s.autosaveInterval);
+    refreshKeyFingerprintDisplay();
+    modalSettings.classList.add("show");
+  }
+  $("#btnSettings").onclick = openSettingsModal;
+  $("#settingsCancelBtn").onclick = () => modalSettings.classList.remove("show");
+  $("#genKeyBtn").onclick = async () => {
+    if (SignKey.hasKeypair() && !confirm("이미 서명 키가 있습니다. 새로 생성하면 기존 서명은 더 이상 검증되지 않습니다. 계속할까요?")) return;
+    const fp = await SignKey.generate();
+    await refreshKeyFingerprintDisplay();
+    UI.toast("서명 키가 생성되었습니다: " + fp, "ok");
+    UI.render();
+  };
+  $("#clearKeyBtn").onclick = async () => {
+    if (!confirm("서명 키를 삭제할까요? 이 키로 만든 서명은 더 이상 검증할 수 없게 됩니다.")) return;
+    SignKey.clear();
+    await refreshKeyFingerprintDisplay();
+    UI.toast("서명 키가 삭제되었습니다.", "ok");
+    UI.render();
+  };
+  $("#settingsSaveBtn").onclick = () => {
+    Settings.set({
+      defaultAuthor: $("#set-default-author").value.trim() || "User",
+      autosaveEnabled: $("#set-autosave-enabled").checked,
+      autosaveInterval: Number($("#set-autosave-interval").value),
+    });
+    modalSettings.classList.remove("show");
+    UI.toast("설정이 저장되었습니다.", "ok");
+    UI.render();
+  };
+  $("#clearAutosaveBtn").onclick = () => {
+    if (!confirm("자동 저장 데이터를 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) return;
+    AutoSave.clear();
+    UI.toast("자동 저장 데이터가 삭제되었습니다.", "ok");
+    UI.render();
+  };
+
+  // Recent projects — clear all
+  $("#clearRecentsBtn").onclick = () => {
+    if (!confirm("최근 프로젝트 기록을 모두 삭제할까요?")) return;
+    RecentProjects.clear();
+    UI.toast("최근 프로젝트 기록이 삭제되었습니다.", "ok");
+    UI.render();
+  };
+
+  // Log panel — clear
+  $("#clearLogBtn").onclick = () => { Logger.clear(); UI.render(); };
+
+  // ==========================================================================
+  // Export project info as JSON / Markdown (metadata only — no raw file bytes)
+  // ==========================================================================
+  function buildExportData() {
+    const p = State.get();
+    const files = State.fileNodes();
+    let cursor = 0;
+    const fileTable = files.map(f => {
+      const entry = { path: f.path, size: f.bytes.length, offset: cursor, compression: "0x00 Store", sha256: f.sha256 };
+      cursor += f.bytes.length;
+      return entry;
+    });
+    return {
+      jno_spec_version: p.manifest.jno_spec_version || "1.0",
+      studio_version: `${JnoFormat.SPEC_VERSION.major}.${p.versionMinor ?? 0}`,
+      filename: p.filename,
+      manifest: p.manifest,
+      security: p.security,
+      signed: !!p.signed,
+      ai_instructions: p.aiInstructions,
+      file_table: fileTable,
+      stats: {
+        file_count: files.length,
+        total_size_bytes: cursor,
+        exported_at: Util.nowISO(),
+      },
+    };
+  }
+  function downloadTextFile(filename, mime, text) {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  $("#exportJsonBtn").onclick = () => {
+    const p = State.get();
+    if (!p) return;
+    const data = buildExportData();
+    const name = (p.manifest.name || "project") + ".jno.json";
+    downloadTextFile(name, "application/json", JSON.stringify(data, null, 2));
+    UI.toast(`"${name}" 다운로드됨`, "ok");
+  };
+  $("#exportMdBtn").onclick = () => {
+    const p = State.get();
+    if (!p) return;
+    const data = buildExportData();
+    const m = data.manifest;
+    const lines = [];
+    lines.push(`# ${m.name || "Untitled Project"}`);
+    lines.push("");
+    if (m.description) { lines.push(m.description); lines.push(""); }
+    lines.push(`| 항목 | 값 |`);
+    lines.push(`|---|---|`);
+    lines.push(`| Version | ${m.version || "-"} |`);
+    lines.push(`| Author | ${m.author || "-"} |`);
+    lines.push(`| Language | ${m.language || "-"} |`);
+    lines.push(`| Entry | ${m.entry || "-"} |`);
+    lines.push(`| Entries | ${(m.entries || []).join(", ") || "-"} |`);
+    lines.push(`| Security | ${data.security === 3 ? "Full Encryption" : data.security === 2 ? "Password Protected" : "Public"} |`);
+    lines.push(`| Signed | ${data.signed ? "Yes" : "No"} |`);
+    lines.push(`| jno_spec_version | ${data.jno_spec_version} |`);
+    lines.push("");
+    lines.push(`## File Table (${data.stats.file_count}개, 총 ${Util.fmtBytes(data.stats.total_size_bytes)})`);
+    lines.push("");
+    lines.push(`| Path | Size | SHA-256 |`);
+    lines.push(`|---|---|---|`);
+    for (const f of data.file_table) lines.push(`| ${f.path} | ${Util.fmtBytes(f.size)} | \`${(f.sha256 || "").slice(0,16)}…\` |`);
+    if (data.ai_instructions && data.ai_instructions.instructions) {
+      lines.push("");
+      lines.push(`## AI 에이전트 지시사항`);
+      lines.push("");
+      lines.push(data.ai_instructions.instructions);
+    }
+    lines.push("");
+    lines.push(`_생성: JNO Studio · ${data.stats.exported_at}_`);
+    const name = (p.manifest.name || "project") + ".jno.md";
+    downloadTextFile(name, "text/markdown", lines.join("\n"));
+    UI.toast(`"${name}" 다운로드됨`, "ok");
+  };
+
+  // Autosave restore (offered on the empty-state screen when a snapshot exists)
+  $("#restoreAutosaveBtn").onclick = () => {
+    const snap = AutoSave.restore();
+    if (!snap) { UI.toast("복원할 자동 저장 데이터가 없습니다.", "err"); return; }
+    State.loadSnapshot(snap);
+    UI.openPanel("manifest");
+    UI.toast("자동 저장 데이터를 복원했습니다. 암호화된 프로젝트는 저장 전에 비밀번호를 다시 설정해주세요.", "ok");
+  };
+
+  // Autosave status badge in the top bar
+  AutoSave.subscribeStatus((status, time) => {
+    const badge = $("#autosaveBadge");
+    const text = $("#autosaveBadgeText");
+    if (status === "off") { badge.style.display = "none"; return; }
+    badge.style.display = "inline-flex";
+    if (status === "pending") text.textContent = "Autosaving…";
+    else if (status === "saved") text.textContent = "Autosaved " + new Date(time).toLocaleTimeString();
+    else if (status === "error") text.textContent = "Autosave failed";
+  });
+
+  // ==========================================================================
+  // Command Palette (Ctrl/Cmd+K) — quick access to every major action
+  // ==========================================================================
+  const cmdPalette = $("#cmdPalette");
+  const cmdInput = $("#cmdPaletteInput");
+  const cmdList = $("#cmdPaletteList");
+  let cmdActiveIndex = 0;
+
+  const commands = [
+    { label: "새 프로젝트", key: "Ctrl N", action: () => showNewModal() },
+    { label: ".jno 열기", key: "Ctrl O", action: () => $("#fileOpenInput").click() },
+    { label: ".jno 저장", key: "Ctrl S", action: () => { if (!$("#btnSave").disabled) $("#btnSave").click(); } },
+    { label: "새 파일 만들기", key: "", action: () => $("#btnNewFile").click() },
+    { label: "새 폴더 만들기", key: "", action: () => $("#btnNewFolder").click() },
+    { label: "파일 업로드", key: "", action: () => $("#fileAddInput").click() },
+    { label: "파일/폴더 검색으로 이동", key: "Ctrl F", action: () => { $("#explorerSearch").focus(); $("#explorerSearch").select(); } },
+    { label: "Manifest 열기", key: "", action: () => UI.openPanel("manifest") },
+    { label: "Header 열기", key: "", action: () => UI.openPanel("header") },
+    { label: "File Table 열기", key: "", action: () => UI.openPanel("filetable") },
+    { label: "Security 열기", key: "", action: () => UI.openPanel("security") },
+    { label: "Structure 시각화 열기", key: "", action: () => UI.openPanel("structure") },
+    { label: "JSON으로 내보내기", key: "", action: () => { UI.openPanel("structure"); $("#exportJsonBtn").click(); } },
+    { label: "Markdown으로 내보내기", key: "", action: () => { UI.openPanel("structure"); $("#exportMdBtn").click(); } },
+    { label: "매뉴얼 / 튜토리얼 열기", key: "", action: () => UI.openPanel("manual") },
+    { label: "Recent Projects 열기", key: "", action: () => UI.openPanel("recent") },
+    { label: "Statistics 열기", key: "", action: () => UI.openPanel("stats") },
+    { label: "Log 패널 열기", key: "", action: () => UI.openPanel("log") },
+    { label: "설정 열기", key: "", action: () => openSettingsModal() },
+    { label: "단축키 보기", key: "Shift + /", action: () => modalShortcuts.classList.add("show") },
+  ];
+
+  function renderCmdList(filterText) {
+    const q = (filterText || "").trim().toLowerCase();
+    const filtered = q ? commands.filter(c => c.label.toLowerCase().includes(q)) : commands;
+    cmdActiveIndex = Math.min(cmdActiveIndex, Math.max(0, filtered.length - 1));
+    cmdList.innerHTML = "";
+    if (filtered.length === 0) {
+      cmdList.innerHTML = `<div class="cmdpal-empty">일치하는 명령이 없습니다</div>`;
+      return;
+    }
+    filtered.forEach((c, i) => {
+      const row = document.createElement("div");
+      row.className = "cmdpal-item" + (i === cmdActiveIndex ? " active" : "");
+      row.innerHTML = `<span>${c.label}</span>${c.key ? `<span class="cpi-key">${c.key}</span>` : ""}`;
+      row.onmouseenter = () => { cmdActiveIndex = i; renderCmdList(cmdInput.value); };
+      row.onclick = () => { closeCommandPalette(); c.action(); };
+      cmdList.appendChild(row);
+    });
+    return filtered;
+  }
+  function openCommandPalette() {
+    cmdInput.value = "";
+    cmdActiveIndex = 0;
+    renderCmdList("");
+    cmdPalette.classList.add("show");
+    setTimeout(() => cmdInput.focus(), 0);
+  }
+  function closeCommandPalette() { cmdPalette.classList.remove("show"); }
+  function toggleCommandPalette() { cmdPalette.classList.contains("show") ? closeCommandPalette() : openCommandPalette(); }
+
+  cmdInput.addEventListener("input", () => renderCmdList(cmdInput.value));
+  cmdInput.addEventListener("keydown", (e) => {
+    const filtered = renderCmdList(cmdInput.value) || [];
+    if (e.key === "ArrowDown") { e.preventDefault(); cmdActiveIndex = Math.min(cmdActiveIndex + 1, filtered.length - 1); renderCmdList(cmdInput.value); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); cmdActiveIndex = Math.max(cmdActiveIndex - 1, 0); renderCmdList(cmdInput.value); }
+    else if (e.key === "Enter") { e.preventDefault(); const item = filtered[cmdActiveIndex]; if (item) { closeCommandPalette(); item.action(); } }
+    else if (e.key === "Escape") { e.preventDefault(); closeCommandPalette(); }
+  });
+  cmdPalette.addEventListener("click", (e) => { if (e.target === cmdPalette) closeCommandPalette(); });
+
+  // ==========================================================================
+  // Shortcuts help modal
+  // ==========================================================================
+  const modalShortcuts = $("#modalShortcuts");
+  $("#btnShortcuts").onclick = () => modalShortcuts.classList.add("show");
+  $("#shortcutsCloseBtn").onclick = () => modalShortcuts.classList.remove("show");
+
+  // ==========================================================================
+  // Global keyboard shortcuts
+  // ==========================================================================
+  document.addEventListener("keydown", (e) => {
+    const metaOrCtrl = e.ctrlKey || e.metaKey;
+    const tag = (e.target.tagName || "").toLowerCase();
+    const isTyping = tag === "input" || tag === "textarea" || e.target.isContentEditable;
+
+    if (metaOrCtrl && e.key.toLowerCase() === "k") { e.preventDefault(); toggleCommandPalette(); return; }
+    if (metaOrCtrl && e.key.toLowerCase() === "s") { e.preventDefault(); if (!$("#btnSave").disabled) $("#btnSave").click(); return; }
+    if (metaOrCtrl && e.key.toLowerCase() === "o") { e.preventDefault(); $("#fileOpenInput").click(); return; }
+    if (metaOrCtrl && e.key.toLowerCase() === "n") { e.preventDefault(); showNewModal(); return; }
+    if (metaOrCtrl && e.key.toLowerCase() === "f") { e.preventDefault(); $("#explorerSearch").focus(); $("#explorerSearch").select(); return; }
+    if (!isTyping && e.shiftKey && e.key === "?") { e.preventDefault(); modalShortcuts.classList.add("show"); return; }
+
+    if (e.key === "Escape") {
+      if (cmdPalette.classList.contains("show")) { closeCommandPalette(); return; }
+      if (modalShortcuts.classList.contains("show")) { modalShortcuts.classList.remove("show"); return; }
+    }
+    if (!isTyping && (e.key === "Delete" || e.key === "Backspace")) {
+      if (UI.deleteCurrentPreview()) e.preventDefault();
+    }
+  });
+
+  UI.render();
+})();
+</script>
+</body>
+</html>```
